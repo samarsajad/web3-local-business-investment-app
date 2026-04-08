@@ -47,7 +47,7 @@ npm start
 ---
 
 
-# ⛓️ 2. BLOCKCHAIN SETUP (Hardhat)
+# 2. BLOCKCHAIN SETUP (Hardhat)
 
 ##  Initialize project
 
