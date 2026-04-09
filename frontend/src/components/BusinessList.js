@@ -13,7 +13,7 @@ function BusinessList() {
   useEffect(() => {
     const fetchBusinesses = async () => {
       const querySnapshot = await getDocs(collection(db, "businesses"));
-      const data = querySnapshot.docs.map(doc => ({
+      const data = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
@@ -77,12 +77,58 @@ function BusinessList() {
 
       alert("Investment successful + reward given!");
 
-      // 🔹 Refresh balance
       await loadBalance();
-
     } catch (err) {
       console.error(err);
-      alert(err?.shortMessage || err?.reason || err?.message || "Transaction failed");
+
+      if (err?.code === "CALL_EXCEPTION") {
+        alert("Transaction reverted. Check contract or businessId.");
+        return;
+      }
+
+      alert(
+        err?.shortMessage ||
+          err?.reason ||
+          err?.message ||
+          "Transaction failed"
+      );
+    }
+  };
+
+  // 🔹 Purchase function
+  const handlePurchase = async (businessId) => {
+    try {
+      const rewardContract = await getRewardContract();
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const userBalance = await rewardContract.balanceOf(userAddress);
+      console.log("User balance:", ethers.formatUnits(userBalance, 18));
+
+      const discountCost = ethers.parseUnits("5", 18);
+
+      let finalPrice = 100;
+
+      // ✅ Apply discount if enough tokens
+      if (userBalance >= discountCost) {
+        const tx = await rewardContract.burnTokens(discountCost);
+        await tx.wait();
+
+        finalPrice = 90;
+        alert("Discount applied using tokens!");
+      } else {
+        alert("Not enough tokens, paying full price.");
+      }
+
+      // Simulated purchase
+      alert(`Purchased from business ${businessId} for ₹${finalPrice}`);
+
+      await loadBalance();
+    } catch (err) {
+      console.error(err);
+      alert("Purchase failed");
     }
   };
 
@@ -90,27 +136,35 @@ function BusinessList() {
     <div>
       <h2>Local Businesses</h2>
 
-      {/* 🔹 Show balance ONCE (not inside loop) */}
+      {/* 🔹 User balance */}
       <h3>Your Rewards: {balance} LRT</h3>
 
-      {businesses.map((biz, index) => (
-        <div
-          key={biz.id}
-          style={{
-            border: "1px solid gray",
-            margin: "10px",
-            padding: "10px",
-          }}
-        >
-          <h3>{biz.name}</h3>
-          <p>{biz.description}</p>
-          <p>Funding Goal: ₹{biz.fundingGoal}</p>
+      {businesses.map((biz, index) => {
+        const businessId = index + 1;
 
-          <button onClick={() => invest(index + 1)}>
-            Invest
-          </button>
-        </div>
-      ))}
+        return (
+          <div
+            key={biz.id}
+            style={{
+              border: "1px solid gray",
+              margin: "10px",
+              padding: "10px",
+            }}
+          >
+            <h3>{biz.name}</h3>
+            <p>{biz.description}</p>
+            <p>Funding Goal: ₹{biz.fundingGoal}</p>
+
+            <button onClick={() => invest(businessId)}>
+              Invest
+            </button>
+
+            <button onClick={() => handlePurchase(businessId)}>
+              Buy Item (₹100)
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

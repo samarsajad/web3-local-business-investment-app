@@ -6,6 +6,8 @@ const CONTRACT_ADDRESS =
 
 const EXPECTED_CHAIN_ID = 31337n;
 
+const LOCAL_CHAIN_HEX = "0x7a69";
+
 const ABI = [{
       "inputs": [],
       "name": "businessCount",
@@ -133,7 +135,7 @@ export const getContract = async () => {
     throw new Error("MetaMask not installed");
   }
 
-  const provider = new ethers.BrowserProvider(window.ethereum);
+  let provider = new ethers.BrowserProvider(window.ethereum);
 
   // 🔥 STEP 1: Force account selection popup
   const accounts = await window.ethereum.request({
@@ -152,8 +154,9 @@ export const getContract = async () => {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x7a69" }], // 31337
+        params: [{ chainId: LOCAL_CHAIN_HEX }], // 31337
       });
+      provider = new ethers.BrowserProvider(window.ethereum);
     } catch (error) {
       throw new Error("Switch MetaMask to Hardhat Local (31337)");
     }
@@ -170,6 +173,24 @@ export const getContract = async () => {
     throw new Error("Account mismatch. Reconnect MetaMask.");
   }
 
+  const code = await provider.getCode(CONTRACT_ADDRESS);
+  if (!code || code === "0x") {
+    throw new Error(
+      `No contract found at ${CONTRACT_ADDRESS}. Redeploy Investment and set REACT_APP_CONTRACT_ADDRESS.`
+    );
+  }
+
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+  // Probe a known function so wrong-address issues fail fast with a clear message.
+  try {
+    await contract.businessCount();
+  } catch (error) {
+    throw new Error(
+      `Address ${CONTRACT_ADDRESS} is not the Investment contract. After restarting Hardhat, redeploy Investment and update REACT_APP_CONTRACT_ADDRESS.`
+    );
+  }
+
   // ✅ STEP 5: Return contract
-  return new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  return contract;
 };
