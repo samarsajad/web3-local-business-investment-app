@@ -1,38 +1,560 @@
-.App {
-  text-align: center;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body {
+  background: #f5f7fa;
+  color: #1a1a2e;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* ── Header ── */
+.app-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 14px 32px;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-header h1 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.header-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── Hero Section ── */
+.hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  padding: 48px 32px;
+  text-align: center;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.hero h2 {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  line-height: 1.2;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.hero h2 span {
+  color: #4CAF50;
+}
+
+.hero p {
+  color: rgba(255,255,255,0.7);
+  font-size: 15px;
+  max-width: 500px;
+  margin: 0 auto 32px;
+}
+
+.how-it-works {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.step {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 160px;
+  text-align: center;
+}
+
+.step-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4CAF50;
+  margin-bottom: 4px;
+}
+
+.step-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+
+.step-arrow {
+  color: rgba(255,255,255,0.3);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Buttons ── */
+.btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-wallet {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-seed {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  font-size: 12px;
+}
+
+/* ── Main Layout ── */
+.main-content {
+  max-width: 860px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+
+/* ── Rewards Banner ── */
+.rewards-banner {
+  background: linear-gradient(135deg, #1a1a2e, #0f3460);
+  border-radius: 14px;
+  padding: 18px 24px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(15,52,96,0.3);
+}
+
+.rewards-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rewards-icon {
+  font-size: 32px;
+}
+
+.rewards-label {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rewards-amount {
+  color: #4CAF50;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.rewards-tip {
+  background: rgba(76,175,80,0.15);
+  border: 1px solid rgba(76,175,80,0.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #81C784;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Section Headers ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.section-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.section-subtitle {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 16px;
+  margin-top: -10px;
+}
+
+/* ── Business Cards ── */
+.business-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid #eef0f4;
+  transition: box-shadow 0.2s;
+}
+
+.business-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.business-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.business-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.business-card .description {
+  color: #666;
+  font-size: 13px;
+}
+
+.funding-info {
+  text-align: right;
+}
+
+.funding-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.funding-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.progress-bar {
+  height: 6px;
+  background: #eef0f4;
+  border-radius: 3px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #81C784);
+  border-radius: 3px;
+  width: 35%;
+}
+
+.business-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reward-info {
+  font-size: 12px;
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.btn-invest {
+  background: linear-gradient(135deg, #1a1a2e, #0f3460);
+  color: white;
+  padding: 9px 20px;
+  font-size: 13px;
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 2px solid #eef0f4;
+  margin: 32px 0;
+}
+
+/* ── Shop Cards ── */
+.shop-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid #eef0f4;
+  transition: box-shadow 0.2s;
+}
+
+.shop-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.shop-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shop-info h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.shop-info p {
+  color: #666;
+  font-size: 13px;
+}
+
+.shop-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop-category {
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.btn-browse {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+  font-size: 13px;
+}
+
+.btn-browse:hover {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+/* ── Items List ── */
+.items-list {
+  margin-top: 14px;
+  border-top: 1px solid #eef0f4;
+  padding-top: 14px;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  margin: 6px 0;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #eef0f4;
+  transition: background 0.2s;
+}
+
+.item-row:hover {
+  background: #f0f7ff;
+}
+
+.item-info strong {
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.item-info span {
+  color: #888;
+  font-size: 12px;
+}
+
+.item-right {
+  text-align: right;
+}
+
+.item-price {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.discount-badge {
+  background: #fff3e0;
+  color: #e65100;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.btn-buy {
+  background: linear-gradient(135deg, #1565c0, #1976d2);
+  color: white;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 7px;
+}
+
+.btn-buy:hover {
+  background: linear-gradient(135deg, #0d47a1, #1565c0);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  padding: 52px 32px;
+  text-align: center;
+  color: white;
+}
+
+.hero-tag {
+  display: inline-block;
+  background: rgba(76,175,80,0.2);
+  border: 1px solid rgba(76,175,80,0.4);
+  color: #81C784;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
+}
+
+.hero h2 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+
+.hero h2 span {
+  color: #4CAF50;
+}
+
+.hero p {
+  color: rgba(255,255,255,0.65);
+  font-size: 15px;
+  max-width: 520px;
+  margin: 0 auto 36px;
+  line-height: 1.6;
+}
+
+.how-it-works {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.step {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 18px 22px;
+  min-width: 130px;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.step:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.step-icon {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4CAF50;
+  margin-bottom: 4px;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+
+.step-arrow {
+  color: rgba(255,255,255,0.25);
+  font-size: 22px;
+  font-weight: 300;
+}
+
+/* ── Stats Bar ── */
+.stats-bar {
+  background: white;
+  border-bottom: 1px solid #eef0f4;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a2e;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 36px;
+  background: #eef0f4;
 }

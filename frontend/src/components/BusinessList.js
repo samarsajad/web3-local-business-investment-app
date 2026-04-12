@@ -15,10 +15,7 @@ function BusinessList() {
   useEffect(() => {
     const fetchBusinesses = async () => {
       const querySnapshot = await getDocs(collection(db, "businesses"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setBusinesses(data);
     };
     fetchBusinesses();
@@ -27,10 +24,7 @@ function BusinessList() {
   useEffect(() => {
     const fetchShops = async () => {
       const querySnapshot = await getDocs(collection(db, "shops"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setShops(data);
     };
     fetchShops();
@@ -42,13 +36,8 @@ function BusinessList() {
       setShopItems([]);
       return;
     }
-    const itemsSnapshot = await getDocs(
-      collection(db, "shops", shopId, "items")
-    );
-    const items = itemsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const itemsSnapshot = await getDocs(collection(db, "shops", shopId, "items"));
+    const items = itemsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setShopItems(items);
     setSelectedShop(shopId);
   };
@@ -69,9 +58,7 @@ function BusinessList() {
   useEffect(() => {
     loadBalance();
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", () => {
-        window.location.reload();
-      });
+      window.ethereum.on("accountsChanged", () => window.location.reload());
     }
   }, []);
 
@@ -82,16 +69,11 @@ function BusinessList() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const userAddress = await signer.getAddress();
-      const tx = await contract.invest(Number(businessId), {
-        value: ethers.parseEther("0.01"),
-      });
+      const tx = await contract.invest(Number(businessId), { value: ethers.parseEther("0.01") });
       await tx.wait();
-      const rewardTx = await rewardContract.rewardUser(
-        userAddress,
-        ethers.parseUnits("10", 18)
-      );
+      const rewardTx = await rewardContract.rewardUser(userAddress, ethers.parseUnits("10", 18));
       await rewardTx.wait();
-      alert("Investment successful + reward given!");
+      alert("Investment successful! You earned 10 LRT tokens!");
       await loadBalance();
     } catch (err) {
       console.error(err);
@@ -99,9 +81,7 @@ function BusinessList() {
         alert("Transaction reverted. Check contract or businessId.");
         return;
       }
-      alert(
-        err?.shortMessage || err?.reason || err?.message || "Transaction failed"
-      );
+      alert(err?.shortMessage || err?.reason || err?.message || "Transaction failed");
     }
   };
 
@@ -112,7 +92,6 @@ function BusinessList() {
       const signer = await provider.getSigner();
       const userAddress = await signer.getAddress();
       const userBalance = await rewardContract.balanceOf(userAddress);
-      console.log("User balance:", ethers.formatUnits(userBalance, 18));
       const discountCost = ethers.parseUnits("5", 18);
       let finalPrice = itemPrice;
       if (userBalance >= discountCost) {
@@ -131,102 +110,109 @@ function BusinessList() {
     }
   };
 
+  const categoryEmoji = {
+    "Food & Beverages": "☕",
+    "Fashion": "👗",
+    "Electronics": "📱",
+    "Bakery": "🥐",
+  };
+
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>Local Businesses</h2>
-      <h3>Your Rewards: {balance} LRT</h3>
+    <div>
+      {/* ── Rewards Banner ── */}
+      <div className="rewards-banner">
+        <div className="rewards-left">
+          <span className="rewards-icon">🪙</span>
+          <div>
+            <div className="rewards-label">Your LRT Token Balance</div>
+            <div className="rewards-amount">{balance} LRT</div>
+          </div>
+        </div>
+        <div className="rewards-tip">
+          💡 Earn tokens by investing<br/>Use them for 10% discount!
+        </div>
+      </div>
+
+      {/* ── Businesses ── */}
+      <div className="section-header">
+        <h2 className="section-title">🏪 Local Businesses</h2>
+        <span className="section-badge">{businesses.length} Active</span>
+      </div>
 
       {businesses.map((biz, index) => {
         const businessId = index + 1;
         return (
-          <div
-            key={biz.id}
-            style={{
-              border: "1px solid gray",
-              margin: "10px",
-              padding: "10px",
-              borderRadius: "8px",
-            }}
-          >
-            <h3>{biz.name}</h3>
-            <p>{biz.description}</p>
-            <p>Funding Goal: Rs.{biz.fundingGoal}</p>
-            <button onClick={() => invest(businessId)}>Invest</button>
+          <div key={biz.id} className="business-card">
+            <div className="business-card-header">
+              <div>
+                <h3>{biz.name}</h3>
+                <p className="description">{biz.description}</p>
+              </div>
+              <div className="funding-info">
+                <div className="funding-label">Funding Goal</div>
+                <div className="funding-amount">Rs.{biz.fundingGoal}</div>
+              </div>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill"></div>
+            </div>
+            <div className="business-card-footer">
+              <span className="reward-info">🎁 Earn 10 LRT tokens on investment</span>
+              <button className="btn btn-invest" onClick={() => invest(businessId)}>
+                💰 Invest Now
+              </button>
+            </div>
           </div>
         );
       })}
 
-      <h2 style={{ marginTop: "30px" }}>Spend Your Rewards</h2>
-      <p style={{ color: "gray" }}>Use your LRT tokens for discounts at these shops!</p>
+      <hr className="divider" />
+
+      {/* ── Shops ── */}
+      <div className="section-header">
+        <h2 className="section-title">🛒 Spend Your Rewards</h2>
+        <span className="section-badge">{shops.length} Partner Shops</span>
+      </div>
+      <p className="section-subtitle">Invest in businesses → Earn LRT tokens → Get 10% off at partner shops!</p>
 
       {shops.length === 0 && (
-        <p style={{ color: "orange" }}>No shops yet - waiting for Firebase data...</p>
+        <div className="empty-state">No shops available yet...</div>
       )}
 
       {shops.map((shop) => (
-        <div
-          key={shop.id}
-          style={{
-            border: "1px solid #4CAF50",
-            margin: "10px",
-            padding: "10px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>{shop.name}</h3>
-          <p>{shop.description}</p>
-          <button
-            onClick={() => fetchItems(shop.id)}
-            style={{
-              backgroundColor: "#4CAF50",
-              color: "white",
-              padding: "8px 16px",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            {selectedShop === shop.id ? "Hide Items" : "Browse Items"}
-          </button>
+        <div key={shop.id} className="shop-card">
+          <div className="shop-card-header">
+            <div className="shop-info">
+              <h3>{categoryEmoji[shop.category] || "🏬"} {shop.name}</h3>
+              <p>{shop.description}</p>
+            </div>
+            <div className="shop-meta">
+              {shop.category && (
+                <span className="shop-category">{shop.category}</span>
+              )}
+              <button className="btn btn-browse" onClick={() => fetchItems(shop.id)}>
+                {selectedShop === shop.id ? "Hide ▲" : "Browse ▼"}
+              </button>
+            </div>
+          </div>
 
           {selectedShop === shop.id && (
-            <div style={{ marginTop: "10px" }}>
+            <div className="items-list">
               {shopItems.length === 0 ? (
-                <p>No items found in this shop.</p>
+                <p>No items found.</p>
               ) : (
                 shopItems.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px",
-                      margin: "6px 0",
-                      backgroundColor: "#f9f9f9",
-                      borderRadius: "6px",
-                      border: "1px solid #ddd",
-                    }}
-                  >
-                    <div>
+                  <div key={item.id} className="item-row">
+                    <div className="item-info">
                       <strong>{item.name}</strong>
-                      <p style={{ margin: "2px 0", color: "gray", fontSize: "13px" }}>
-                        {item.description}
-                      </p>
+                      <span>{item.description}</span>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ margin: "0", fontWeight: "bold" }}>Rs.{item.price}</p>
+                    <div className="item-right">
+                      <div className="item-price">Rs.{item.price}</div>
+                      <div className="discount-badge">🏷️ 10% off with LRT</div>
                       <button
+                        className="btn btn-buy"
                         onClick={() => handlePurchase(shop.businessId, item.name, item.price)}
-                        style={{
-                          marginTop: "4px",
-                          backgroundColor: "#2196F3",
-                          color: "white",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
                       >
                         Buy (Rs.{item.price})
                       </button>
