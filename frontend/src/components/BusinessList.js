@@ -3,6 +3,7 @@ import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
+import { getNFTContract } from "../utils/nftContract";
 import { ethers } from "ethers";
 
 function BusinessList() {
@@ -39,7 +40,6 @@ function BusinessList() {
     }
   };
 
-  // 🔹 Load balance on start + account change
   useEffect(() => {
     loadBalance();
 
@@ -50,7 +50,7 @@ function BusinessList() {
     }
   }, []);
 
-  // 🔹 Invest function
+  // 🔹 Invest
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
@@ -60,14 +60,12 @@ function BusinessList() {
       const signer = await provider.getSigner();
       const userAddress = await signer.getAddress();
 
-      // STEP 1: Invest
       const tx = await contract.invest(Number(businessId), {
         value: ethers.parseEther("0.01"),
       });
 
       await tx.wait();
 
-      // STEP 2: Reward
       const rewardTx = await rewardContract.rewardUser(
         userAddress,
         ethers.parseUnits("10", 18)
@@ -80,25 +78,15 @@ function BusinessList() {
       await loadBalance();
     } catch (err) {
       console.error(err);
-
-      if (err?.code === "CALL_EXCEPTION") {
-        alert("Transaction reverted. Check contract or businessId.");
-        return;
-      }
-
-      alert(
-        err?.shortMessage ||
-          err?.reason ||
-          err?.message ||
-          "Transaction failed"
-      );
+      alert("Investment failed");
     }
   };
 
-  // 🔹 Purchase function
+  // 🔹 Purchase + NFT mint
   const handlePurchase = async (businessId) => {
     try {
       const rewardContract = await getRewardContract();
+      const nftContract = await getNFTContract();
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -108,10 +96,9 @@ function BusinessList() {
       console.log("User balance:", ethers.formatUnits(userBalance, 18));
 
       const discountCost = ethers.parseUnits("5", 18);
-
       let finalPrice = 100;
 
-      // ✅ Apply discount if enough tokens
+      // 🔹 Apply discount
       if (userBalance >= discountCost) {
         const tx = await rewardContract.burnTokens(discountCost);
         await tx.wait();
@@ -122,13 +109,22 @@ function BusinessList() {
         alert("Not enough tokens, paying full price.");
       }
 
-      // Simulated purchase
+      // 🔹 Simulate purchase
       alert(`Purchased from business ${businessId} for ₹${finalPrice}`);
+
+      // 🔥 STEP: Mint NFT AFTER purchase
+      const mintTx = await nftContract.mintNFT(userAddress);
+      await mintTx.wait();
+
+      alert("NFT minted! ");
+
+      const nftBalance = await nftContract.balanceOf(userAddress);
+      console.log("NFT count:", nftBalance.toString());
 
       await loadBalance();
     } catch (err) {
       console.error(err);
-      alert("Purchase failed");
+      alert("Purchase or NFT mint failed");
     }
   };
 
@@ -136,7 +132,6 @@ function BusinessList() {
     <div>
       <h2>Local Businesses</h2>
 
-      {/* 🔹 User balance */}
       <h3>Your Rewards: {balance} LRT</h3>
 
       {businesses.map((biz, index) => {
