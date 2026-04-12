@@ -13,7 +13,7 @@ function BusinessCard({ business, products, onInvest, onBuy }) {
       <p style={{ color: "#666" }}>{business.description}</p>
 
       <button
-        onClick={() => onInvest(business.id)}
+        onClick={onInvest}
         style={{
           padding: "8px 14px",
           background: "#6366f1",

@@ -3,7 +3,6 @@ import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
-import { getNFTContract } from "../utils/nftContract";
 import { ethers } from "ethers";
 
 function BusinessList() {
@@ -54,11 +53,6 @@ function BusinessList() {
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
-      const rewardContract = await getRewardContract();
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const userAddress = await signer.getAddress();
 
       const tx = await contract.invest(Number(businessId), {
         value: ethers.parseEther("0.01"),
@@ -66,14 +60,7 @@ function BusinessList() {
 
       await tx.wait();
 
-      const rewardTx = await rewardContract.rewardUser(
-        userAddress,
-        ethers.parseUnits("10", 18)
-      );
-
-      await rewardTx.wait();
-
-      alert("Investment successful + reward given!");
+      alert("Investment successful + reward handled by contract!");
 
       await loadBalance();
     } catch (err) {
@@ -86,7 +73,6 @@ function BusinessList() {
   const handlePurchase = async (businessId) => {
     try {
       const rewardContract = await getRewardContract();
-      const nftContract = await getNFTContract();
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -112,14 +98,44 @@ function BusinessList() {
       // 🔹 Simulate purchase
       alert(`Purchased from business ${businessId} for ₹${finalPrice}`);
 
-      // 🔥 STEP: Mint NFT AFTER purchase
-      const mintTx = await nftContract.mintNFT(userAddress);
-      await mintTx.wait();
+      const orderId =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const mintMessage = [
+        "Mint NFT for purchase",
+        `user:${userAddress}`,
+        `business:${businessId}`,
+        `product:${product.name}`,
+        `price:${finalPrice}`,
+        `order:${orderId}`,
+      ].join("\n");
 
-      alert("NFT minted! ");
+      const signature = await signer.signMessage(mintMessage);
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+      const response = await fetch(`${backendUrl}/mint-nft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAddress,
+          orderId,
+          businessId,
+          productName: product.name,
+          price: finalPrice,
+          message: mintMessage,
+          signature,
+        }),
+      });
 
-      const nftBalance = await nftContract.balanceOf(userAddress);
-      console.log("NFT count:", nftBalance.toString());
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Backend NFT mint failed");
+      }
+
+      alert("NFT minted!");
 
       await loadBalance();
     } catch (err) {

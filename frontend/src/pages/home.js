@@ -8,13 +8,13 @@ import BusinessCard from "../components/Business/BusinessCard";
 
 import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
-import { getNFTContract } from "../utils/nftContract";
 
 function Home() {
   const [businesses, setBusinesses] = useState([]);
   const [products, setProducts] = useState({});
   const [balance, setBalance] = useState("0");
   const [loading, setLoading] = useState(true);
+  const [purchaseStatus, setPurchaseStatus] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -44,12 +44,68 @@ function Home() {
         grouped[data.businessId].push(data);
       });
 
-      setBusinesses(bizData);
+      const syncedBusinesses = await syncBusinessesToContract(bizData);
+      setBusinesses(syncedBusinesses);
       setProducts(grouped);
     } catch (err) {
       console.error("Firestore error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncBusinessesToContract = async (bizData) => {
+    if (!window.ethereum || bizData.length === 0) {
+      return bizData.map((biz, index) => ({
+        ...biz,
+        chainId: index + 1,
+      }));
+    }
+
+    try {
+      const contract = await getContract();
+      const count = Number(await contract.businessCount());
+
+      if (count === 0) {
+        for (const biz of bizData) {
+          const fundingGoal = Number(biz.fundingGoal || 1000);
+          const tx = await contract.createBusiness(biz.name, fundingGoal);
+          await tx.wait();
+        }
+
+        return bizData.map((biz, index) => ({
+          ...biz,
+          chainId: index + 1,
+        }));
+      }
+
+      const onChainBusinesses = [];
+      for (let i = 1; i <= count; i += 1) {
+        const business = await contract.businesses(i);
+        onChainBusinesses.push({
+          id: i,
+          name: business.name,
+        });
+      }
+
+      const idByName = new Map(
+        onChainBusinesses.map((business) => [
+          business.name.trim().toLowerCase(),
+          business.id,
+        ])
+      );
+
+      return bizData.map((biz, index) => ({
+        ...biz,
+        chainId:
+          idByName.get((biz.name || "").trim().toLowerCase()) ?? index + 1,
+      }));
+    } catch (err) {
+      console.error("Contract sync error:", err);
+      return bizData.map((biz, index) => ({
+        ...biz,
+        chainId: index + 1,
+      }));
     }
   };
 
@@ -74,11 +130,6 @@ function Home() {
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
-      const reward = await getRewardContract();
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const user = await signer.getAddress();
 
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
@@ -86,14 +137,7 @@ function Home() {
 
       await tx.wait();
 
-      const rewardTx = await reward.rewardUser(
-        user,
-        ethers.parseUnits("10", 18)
-      );
-
-      await rewardTx.wait();
-
-      alert("Investment successful + reward earned!");
+      alert("Investment successful + reward handled by contract!");
 
       await loadBalance();
     } catch (err) {
@@ -105,8 +149,8 @@ function Home() {
   // 🔹 Purchase + NFT mint
   const handlePurchase = async (businessId, product) => {
     try {
+      setPurchaseStatus(`Preparing purchase for ${product.name}...`);
       const reward = await getRewardContract();
-      const nft = await getNFTContract();
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -129,23 +173,55 @@ function Home() {
       }
 
       // 🔹 Purchase confirmation
-      alert(`Bought ${product.name} for ₹${finalPrice}`);
+      setPurchaseStatus(`Bought ${product.name} for ₹${finalPrice}. Minting NFT...`);
 
-      // 🔥 NFT mint
-      console.log("Minting NFT for:", user);
-      const mintTx = await nft.mintNFT(user);
-      await mintTx.wait();
-      console.log("NFT mint transaction confirmed");
+      const orderId =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const mintMessage = [
+        "Mint NFT for purchase",
+        `user:${user}`,
+        `business:${businessId}`,
+        `product:${product.name}`,
+        `price:${finalPrice}`,
+        `order:${orderId}`,
+      ].join("\n");
 
-      const nftBalance = await nft.balanceOf(user);
-      console.log("NFT count:", nftBalance.toString());
+      const signature = await signer.signMessage(mintMessage);
+      setPurchaseStatus("NFT mint submitted to backend. Waiting for confirmation...");
 
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+      const response = await fetch(`${backendUrl}/mint-nft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAddress: user,
+          orderId,
+          businessId,
+          productName: product.name,
+          price: finalPrice,
+          message: mintMessage,
+          signature,
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Backend NFT mint failed");
+      }
+
+      setPurchaseStatus(`NFT minted successfully for ${product.name}.`);
       alert("🎉 NFT minted successfully!");
 
       await loadBalance();
     } catch (err) {
       console.error(err);
-      alert("Purchase failed");
+      setPurchaseStatus("");
+      alert(err?.reason || err?.message || "Purchase failed");
     }
   };
 
@@ -161,6 +237,7 @@ function Home() {
   return (
     <div className="container">
       <Header balance={balance} />
+      {purchaseStatus ? <p style={{ marginTop: "12px" }}>{purchaseStatus}</p> : null}
 
       {businesses.length === 0 ? (
         <p>No businesses found. Seed your database.</p>
@@ -170,7 +247,7 @@ function Home() {
             key={biz.id}
             business={biz}
             products={products[biz.id] || []}
-            onInvest={() => invest(index)}   // ✅ contract uses index
+            onInvest={() => invest(biz.chainId || index + 1)}
             onBuy={handlePurchase}
           />
         ))
