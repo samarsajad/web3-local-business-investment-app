@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Login from "./components/Login";
-import BusinessList from "./components/BusinessList";
 import { connectWallet } from "./utils/wallet";
+
 import { db } from "./firebase";
 import { setDoc, doc } from "firebase/firestore";
 import "./App.css";
@@ -25,6 +25,9 @@ const seedShops = async () => {
     alert("Shops seeded!");
   } catch (err) { alert("Error: " + err.message); }
 };
+import Home from "./pages/home";
+import "./styles/global.css";
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -38,9 +41,12 @@ function App() {
   return (
     <div>
       {!user ? (
+        // 🔐 LOGIN SCREEN
         <Login setUser={setUser} />
       ) : (
+        // 🏠 MAIN APP
         <>
+
           {/* HEADER */}
           <div className="app-header">
             <div className="header-left">
@@ -131,6 +137,25 @@ function App() {
               <span>Powered by Firebase · Web3 · Vertex AI</span>
             </div>
           </div>
+
+          <div style={{ padding: "20px" }}>
+            <button
+              onClick={handleConnect}
+              style={{
+                padding: "8px 12px",
+                background: "#6366f1",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                marginBottom: "10px"
+              }}
+            >
+              {account ? "Wallet Connected ✅" : "Connect Wallet"}
+            </button>
+          </div>
+
+          <Home user={user} account={account} />
+
         </>
       )}
     </div>

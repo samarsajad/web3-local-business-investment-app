@@ -3,7 +3,7 @@ import RewardToken from "../abis/RewardToken.json";
 
 const CONTRACT_ADDRESS =
   process.env.REACT_APP_REWARD_CONTRACT_ADDRESS ||
-  "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 const EXPECTED_CHAIN_ID = 31337n;
 const LOCAL_CHAIN_HEX = "0x7a69";

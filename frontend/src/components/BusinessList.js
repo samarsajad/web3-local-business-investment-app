@@ -54,6 +54,7 @@ function BusinessList() {
     if (window.ethereum) window.ethereum.on("accountsChanged", () => window.location.reload());
   }, []);
 
+
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
@@ -75,6 +76,30 @@ function BusinessList() {
   };
 
   const handlePurchase = async (businessId, itemName, itemPrice) => {
+
+  // 🔹 Invest
+  const invest = async (businessId) => {
+    try {
+      const contract = await getContract();
+
+      const tx = await contract.invest(Number(businessId), {
+        value: ethers.parseEther("0.01"),
+      });
+
+      await tx.wait();
+
+      alert("Investment successful + reward handled by contract!");
+
+      await loadBalance();
+    } catch (err) {
+      console.error(err);
+      alert("Investment failed");
+    }
+  };
+
+  // 🔹 Purchase + NFT mint
+  const handlePurchase = async (businessId, product) => {
+
     try {
       const rewardContract = await getRewardContract();
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -82,7 +107,14 @@ function BusinessList() {
       const userAddress = await signer.getAddress();
       const userBalance = await rewardContract.balanceOf(userAddress);
       const discountCost = ethers.parseUnits("5", 18);
+
       let finalPrice = itemPrice;
+
+      const productName = product?.name || "Item";
+      let finalPrice = 100;
+
+      // 🔹 Apply discount
+
       if (userBalance >= discountCost) {
         const tx = await rewardContract.burnTokens(discountCost);
         await tx.wait();
@@ -91,9 +123,60 @@ function BusinessList() {
       } else {
         alert("Not enough tokens, paying full price.");
       }
+
       alert("Purchased " + itemName + " for Rs." + finalPrice);
       await loadBalance();
     } catch (err) { console.error(err); alert("Purchase failed"); }
+
+
+      // 🔹 Simulate purchase
+      alert(`Purchased ${productName} from business ${businessId} for ₹${finalPrice}`);
+
+      const orderId =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const mintMessage = [
+        "Mint NFT for purchase",
+        `user:${userAddress}`,
+        `business:${businessId}`,
+        `product:${productName}`,
+        `price:${finalPrice}`,
+        `order:${orderId}`,
+      ].join("\n");
+
+      const signature = await signer.signMessage(mintMessage);
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "http://localhost:4001";
+      const response = await fetch(`${backendUrl}/mint-nft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAddress,
+          orderId,
+          businessId,
+          productName,
+          price: finalPrice,
+          message: mintMessage,
+          signature,
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Backend NFT mint failed");
+      }
+
+      alert("NFT minted!");
+
+      await loadBalance();
+    } catch (err) {
+      console.error(err);
+      alert("Purchase or NFT mint failed");
+    }
+
   };
 
   const categoryEmoji = { "Food & Beverages": "☕", "Fashion": "👗", "Electronics": "📱", "Bakery": "🥐" };
@@ -101,6 +184,7 @@ function BusinessList() {
 
   return (
     <div>
+
       {/* REWARDS BANNER */}
       <div className="rewards-banner">
         <div className="rewards-left">
@@ -108,6 +192,35 @@ function BusinessList() {
           <div>
             <div className="rewards-label">Your LRT Token Balance</div>
             <div className="rewards-amount">{balance} LRT</div>
+
+      <h2>Local Businesses</h2>
+
+      <h3>Your Rewards: {balance} LRT</h3>
+
+      {businesses.map((biz, index) => {
+        const businessId = index + 1;
+
+        return (
+          <div
+            key={biz.id}
+            style={{
+              border: "1px solid gray",
+              margin: "10px",
+              padding: "10px",
+            }}
+          >
+            <h3>{biz.name}</h3>
+            <p>{biz.description}</p>
+            <p>Funding Goal: ₹{biz.fundingGoal}</p>
+
+            <button onClick={() => invest(businessId)}>
+              Invest
+            </button>
+
+            <button onClick={() => handlePurchase(businessId)}>
+              Buy Item (₹100)
+            </button>
+
           </div>
         </div>
         <div className="rewards-tip">

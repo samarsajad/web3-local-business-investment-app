@@ -6,14 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RewardToken is ERC20, Ownable {
 
-    constructor() ERC20("Local Reward Token", "LRT") Ownable(msg.sender) {}
+    constructor() ERC20("Local Reward Token", "LRT") {}
 
-    // 🔹 Mint rewards (only owner)
     function rewardUser(address user, uint256 amount) public onlyOwner {
         _mint(user, amount);
     }
 
-    // 🔹 Burn tokens (user spends tokens)
     function burnTokens(uint256 amount) public {
         _burn(msg.sender, amount);
     }
