@@ -17,21 +17,34 @@ async function seed() {
     getDocs,
     query,
     where,
+    doc,
+    setDoc,
   } = await import("firebase/firestore");
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  const upsertBusiness = async (name, description) => {
+  const upsertBusiness = async (name, description, fundingGoal) => {
     const q = query(collection(db, "businesses"), where("name", "==", name));
     const snap = await getDocs(q);
     if (!snap.empty) {
-      return snap.docs[0].id;
+      const existing = snap.docs[0];
+      await setDoc(
+        doc(db, "businesses", existing.id),
+        {
+          name,
+          description,
+          fundingGoal,
+        },
+        { merge: true }
+      );
+      return existing.id;
     }
 
     const ref = await addDoc(collection(db, "businesses"), {
       name,
       description,
+      fundingGoal,
     });
     return ref.id;
   };
@@ -55,8 +68,12 @@ async function seed() {
   };
 
   try {
-    const bakeryId = await upsertBusiness("Local Bakery", "Fresh bread & cakes");
-    const cafeId = await upsertBusiness("Local Cafe", "Coffee & snacks");
+    const bakeryId = await upsertBusiness(
+      "Local Bakery",
+      "Fresh bread & cakes",
+      1000
+    );
+    const cafeId = await upsertBusiness("Local Cafe", "Coffee & snacks", 1200);
 
     await addProductIfMissing("Chocolate Cake", 200, bakeryId);
     await addProductIfMissing("Croissant", 80, bakeryId);
