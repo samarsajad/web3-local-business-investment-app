@@ -18,13 +18,14 @@ contract Investment is Ownable {
 
     uint public businessCount;
     uint256 public rewardAmount = 10 ether;
+    uint256 public constant maxRewardedInvestments = 5;
     address public rewardToken;
 
     mapping(uint => Business) public businesses;
 
     
     mapping(uint => mapping(address => uint)) public investments;
-    mapping(uint => mapping(address => bool)) public rewardClaimed;
+    mapping(address => uint256) public rewardedInvestments;
 
     event BusinessCreated(uint256 indexed businessId, string name, uint256 fundingGoal);
     event Invested(uint256 indexed businessId, address indexed investor, uint256 amount);
@@ -61,8 +62,8 @@ contract Investment is Ownable {
         investments[businessId][msg.sender] += msg.value;
         emit Invested(businessId, msg.sender, msg.value);
 
-        if (!rewardClaimed[businessId][msg.sender] && rewardToken != address(0) && rewardAmount > 0) {
-            rewardClaimed[businessId][msg.sender] = true;
+        if (rewardedInvestments[msg.sender] < maxRewardedInvestments && rewardToken != address(0) && rewardAmount > 0) {
+            rewardedInvestments[msg.sender] += 1;
             IRewardToken(rewardToken).rewardUser(msg.sender, rewardAmount);
             emit RewardIssued(businessId, msg.sender, rewardAmount);
         }

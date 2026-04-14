@@ -130,6 +130,13 @@ function Home() {
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
+      const rewardContract = await getRewardContract();
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const user = await signer.getAddress();
+
+      const beforeBal = await rewardContract.balanceOf(user);
 
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
@@ -137,12 +144,29 @@ function Home() {
 
       await tx.wait();
 
-      alert("Investment successful + reward handled by contract!");
+      const afterBal = await rewardContract.balanceOf(user);
+      const rewardDelta = afterBal - beforeBal;
 
-      await loadBalance();
+      setBalance(ethers.formatUnits(afterBal, 18));
+
+      if (rewardDelta > 0n) {
+        alert(
+          `Investment successful! You earned ${ethers.formatUnits(
+            rewardDelta,
+            18
+          )} LRT.`
+        );
+      } else {
+        alert(
+          "Investment successful, but no new LRT was added (you may have reached the 5 rewarded investments limit)."
+        );
+      }
+
+      console.log("LRT before invest:", ethers.formatUnits(beforeBal, 18));
+      console.log("LRT after invest:", ethers.formatUnits(afterBal, 18));
     } catch (err) {
       console.error(err);
-      alert("Investment failed");
+      alert(err?.reason || err?.message || "Investment failed");
     }
   };
 
