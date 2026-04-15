@@ -1,5 +1,171 @@
+import { useEffect, useState } from "react";
+import { db } from "../firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { getContract } from "../utils/contract";
+import { getRewardContract } from "../utils/rewardContract";
 import { ethers } from "ethers";
 
+function BusinessList() {
+  const [businesses, setBusinesses] = useState([]);
+  const [shops, setShops] = useState([]);
+  const [shopItems, setShopItems] = useState([]);
+  const [selectedShop, setSelectedShop] = useState(null);
+  const [balance, setBalance] = useState("0");
+
+  // 🔹 Fetch businesses
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      const querySnapshot = await getDocs(collection(db, "businesses"));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setBusinesses(data);
+    };
+    fetchBusinesses();
+  }, []);
+
+  // 🔹 Fetch shops
+  useEffect(() => {
+    const fetchShops = async () => {
+      const querySnapshot = await getDocs(collection(db, "shops"));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setShops(data);
+    };
+    fetchShops();
+  }, []);
+
+  // 🔹 Fetch shop items
+  const fetchItems = async (shopId) => {
+    if (selectedShop === shopId) {
+      setSelectedShop(null);
+      setShopItems([]);
+      return;
+    }
+
+    const itemsSnapshot = await getDocs(
+      collection(db, "shops", shopId, "items")
+    );
+    const items = itemsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setShopItems(items);
+    setSelectedShop(shopId);
+  };
+
+  // 🔹 Load token balance
+  const loadBalance = async () => {
+    try {
+      const rewardContract = await getRewardContract();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const bal = await rewardContract.balanceOf(userAddress);
+      setBalance(ethers.formatUnits(bal, 18));
+    } catch (err) {
+      console.error("Balance error:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadBalance();
+
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", () => {
+        window.location.reload();
+      });
+    }
+  }, []);
+
+  // 🔹 Invest
+  const invest = async (businessId) => {
+    try {
+      const contract = await getContract();
+
+      const tx = await contract.invest(Number(businessId), {
+        value: ethers.parseEther("0.01"),
+      });
+
+      await tx.wait();
+      alert("Investment successful!");
+      await loadBalance();
+    } catch (err) {
+      console.error(err);
+      alert("Investment failed");
+    }
+  };
+
+  // 🔹 Purchase
+  const handlePurchase = async (businessId, product) => {
+    try {
+      const rewardContract = await getRewardContract();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const userBalance = await rewardContract.balanceOf(userAddress);
+      const discountCost = ethers.parseUnits("5", 18);
+
+      let finalPrice = product.price;
+
+      if (userBalance >= discountCost) {
+        const tx = await rewardContract.burnTokens(discountCost);
+        await tx.wait();
+        finalPrice = product.price * 0.9;
+        alert("Discount applied!");
+      }
+
+      alert(`Purchased ${product.name} for ₹${finalPrice}`);
+      await loadBalance();
+    } catch (err) {
+      console.error(err);
+      alert("Purchase failed");
+    }
+  };
+
+  return (
+    <div>
+      <h2>Your Balance: {balance} LRT</h2>
+
+      {/* BUSINESSES */}
+      {businesses.map((biz, index) => (
+        <div key={biz.id} className="business-card">
+          <h3>{biz.name}</h3>
+          <p>{biz.description}</p>
+          <button onClick={() => invest(index + 1)}>Invest</button>
+        </div>
+      ))}
+
+      {/* SHOPS */}
+      {shops.map((shop) => (
+        <div key={shop.id} className="shop-card">
+          <h3>{shop.name}</h3>
+          <button onClick={() => fetchItems(shop.id)}>
+            {selectedShop === shop.id ? "Hide" : "Browse"}
+          </button>
+
+          {selectedShop === shop.id &&
+            shopItems.map((item) => (
+              <div key={item.id}>
+                <p>{item.name} - ₹{item.price}</p>
+                <button onClick={() => handlePurchase(shop.businessId, item)}>
+                  Buy
+                </button>
+              </div>
+            ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default BusinessList;
 function BusinessList() {
   const [businesses, setBusinesses] = useState([]);
   const [balance, setBalance] = useState("0");
