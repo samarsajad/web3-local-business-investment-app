@@ -1,142 +1,45 @@
 import { useEffect, useState } from "react";
-import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
 import { ethers } from "ethers";
-
 import Header from "../components/Layout/header";
-import BusinessCard from "../components/Business/BusinessCard";
-
 import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
 
 function Home() {
-  const [businesses, setBusinesses] = useState([]);
-  const [products, setProducts] = useState({});
   const [balance, setBalance] = useState("0");
-  const [loading, setLoading] = useState(true);
-  const [purchaseStatus, setPurchaseStatus] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-    loadBalance();
-  }, []);
-
-  // 🔹 Fetch businesses + products
-  const fetchData = async () => {
-    try {
-      const bizSnap = await getDocs(collection(db, "businesses"));
-      const prodSnap = await getDocs(collection(db, "products"));
-
-      const bizData = bizSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      const grouped = {};
-
-      prodSnap.docs.forEach((doc) => {
-        const data = doc.data();
-
-        if (!grouped[data.businessId]) {
-          grouped[data.businessId] = [];
-        }
-
-        grouped[data.businessId].push(data);
-      });
-
-      const syncedBusinesses = await syncBusinessesToContract(bizData);
-      setBusinesses(syncedBusinesses);
-      setProducts(grouped);
-    } catch (err) {
-      console.error("Firestore error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const syncBusinessesToContract = async (bizData) => {
-    if (!window.ethereum || bizData.length === 0) {
-      return bizData.map((biz, index) => ({
-        ...biz,
-        chainId: index + 1,
-      }));
-    }
-
-    try {
-      const contract = await getContract();
-      const count = Number(await contract.businessCount());
-
-      if (count === 0) {
-        for (const biz of bizData) {
-          const fundingGoal = Number(biz.fundingGoal || 1000);
-          const tx = await contract.createBusiness(biz.name, fundingGoal);
-          await tx.wait();
-        }
-
-        return bizData.map((biz, index) => ({
-          ...biz,
-          chainId: index + 1,
-        }));
-      }
-
-      const onChainBusinesses = [];
-      for (let i = 1; i <= count; i += 1) {
-        const business = await contract.businesses(i);
-        onChainBusinesses.push({
-          id: i,
-          name: business.name,
-        });
-      }
-
-      const idByName = new Map(
-        onChainBusinesses.map((business) => [
-          business.name.trim().toLowerCase(),
-          business.id,
-        ])
-      );
-
-      return bizData.map((biz, index) => ({
-        ...biz,
-        chainId:
-          idByName.get((biz.name || "").trim().toLowerCase()) ?? index + 1,
-      }));
-    } catch (err) {
-      console.error("Contract sync error:", err);
-      return bizData.map((biz, index) => ({
-        ...biz,
-        chainId: index + 1,
-      }));
-    }
-  };
-
-  // 🔹 Load token balance
+  // 🔹 Load Balance
   const loadBalance = async () => {
     try {
       if (!window.ethereum) return;
 
-      const contract = await getRewardContract();
+      const rewardContract = await getRewardContract();
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const user = await signer.getAddress();
+      const address = await signer.getAddress();
 
-      const bal = await contract.balanceOf(user);
+      const bal = await rewardContract.balanceOf(address);
       setBalance(ethers.formatUnits(bal, 18));
     } catch (err) {
-      console.error("Balance error:", err);
+      console.error(err);
     }
   };
 
-  // 🔹 Invest
+  useEffect(() => {
+    loadBalance();
+  }, []);
+
+  // 🔹 INVEST (REAL FIX)
   const invest = async (businessId) => {
     try {
+      if (!window.ethereum) {
+        alert("Install MetaMask");
+        return;
+      }
+
+      setLoading(true);
+
       const contract = await getContract();
-      const rewardContract = await getRewardContract();
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const user = await signer.getAddress();
-
-      const beforeBal = await rewardContract.balanceOf(user);
 
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
@@ -144,138 +47,217 @@ function Home() {
 
       await tx.wait();
 
-      const afterBal = await rewardContract.balanceOf(user);
-      const rewardDelta = afterBal - beforeBal;
+      alert("✅ Investment successful!");
+      await loadBalance();
 
-      setBalance(ethers.formatUnits(afterBal, 18));
-
-      if (rewardDelta > 0n) {
-        alert(
-          `Investment successful! You earned ${ethers.formatUnits(
-            rewardDelta,
-            18
-          )} LRT.`
-        );
-      } else {
-        alert(
-          "Investment successful, but no new LRT was added (you may have reached the 5 rewarded investments limit)."
-        );
-      }
-
-      console.log("LRT before invest:", ethers.formatUnits(beforeBal, 18));
-      console.log("LRT after invest:", ethers.formatUnits(afterBal, 18));
     } catch (err) {
       console.error(err);
-      alert(err?.reason || err?.message || "Investment failed");
+
+      if (err.code === "CALL_EXCEPTION") {
+        alert("❌ Contract rejected (wrong businessId or contract issue)");
+      } else if (err.code === "ACTION_REJECTED") {
+        alert("⚠️ Transaction rejected");
+      } else {
+        alert(err?.shortMessage || "Transaction failed");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 🔹 Purchase + NFT mint
-  const handlePurchase = async (businessId, product) => {
+  // 🔹 BUY
+  const buyItem = async (price) => {
     try {
-      setPurchaseStatus(`Preparing purchase for ${product.name}...`);
-      const reward = await getRewardContract();
+      if (!window.ethereum) {
+        alert("Connect wallet first");
+        return;
+      }
 
+      setLoading(true);
+
+      const rewardContract = await getRewardContract();
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const user = await signer.getAddress();
+      const address = await signer.getAddress();
 
-      const bal = await reward.balanceOf(user);
-      const cost = ethers.parseUnits("5", 18);
+      const balanceWei = await rewardContract.balanceOf(address);
+      const discountCost = ethers.parseUnits("5", 18);
 
-      let finalPrice = product.price;
+      let finalPrice = price;
 
-      // 🔹 Apply discount
-      if (bal >= cost) {
-        const burnTx = await reward.burnTokens(cost);
+      if (balanceWei >= discountCost) {
+        const burnTx = await rewardContract.burnTokens(discountCost);
         await burnTx.wait();
-
-        finalPrice = Math.floor(product.price * 0.9);
-        alert("Discount applied using tokens!");
+        finalPrice = price * 0.9;
+        alert("🎉 Discount applied!");
       } else {
-        alert("Not enough tokens, paying full price.");
+        alert("No tokens → full price");
       }
 
-      // 🔹 Purchase confirmation
-      setPurchaseStatus(`Bought ${product.name} for ₹${finalPrice}. Minting NFT...`);
-
-      const orderId =
-        window.crypto?.randomUUID?.() ||
-        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const mintMessage = [
-        "Mint NFT for purchase",
-        `user:${user}`,
-        `business:${businessId}`,
-        `product:${product.name}`,
-        `price:${finalPrice}`,
-        `order:${orderId}`,
-      ].join("\n");
-
-      const signature = await signer.signMessage(mintMessage);
-      setPurchaseStatus("NFT mint submitted to backend. Waiting for confirmation...");
-
-      const backendUrl =
-        process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
-      const response = await fetch(`${backendUrl}/mint-nft`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userAddress: user,
-          orderId,
-          businessId,
-          productName: product.name,
-          price: finalPrice,
-          message: mintMessage,
-          signature,
-        }),
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload?.error || "Backend NFT mint failed");
-      }
-
-      setPurchaseStatus(`NFT minted successfully for ${product.name}.`);
-      alert("🎉 NFT minted successfully!");
-
+      alert(`Purchased for ₹${finalPrice}`);
       await loadBalance();
+
     } catch (err) {
       console.error(err);
-      setPurchaseStatus("");
-      alert(err?.reason || err?.message || "Purchase failed");
+      alert("Purchase failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 🔹 Loading UI
-  if (loading) {
-    return (
-      <div className="container">
-        <h3>Loading businesses...</h3>
-      </div>
-    );
-  }
+  // 🔹 DATA (same UI content)
+  const businesses = [
+    {
+      id: 1,
+      name: "Urban Brew Café ☕",
+      tagline: "Craft coffee experience",
+      category: "Food",
+      goal: 100000,
+      raised: 65000,
+    },
+    {
+      id: 2,
+      name: "Golden Crust Bakery 🥐",
+      tagline: "Fresh baked happiness",
+      category: "Bakery",
+      goal: 80000,
+      raised: 50000,
+    },
+  ];
+
+  const shops = [
+    {
+      name: "Riya Boutique 👗",
+      tagline: "Elegant styles for modern you",
+      category: "Fashion",
+      items: [
+        { name: "Cotton Kurta", price: 1200 },
+        { name: "Thread Work Dupatta", price: 800 },
+      ],
+    },
+    {
+      name: "Dev Electronics 📱",
+      tagline: "Smart gadgets for smart living",
+      category: "Electronics",
+      items: [
+        { name: "Wireless Earbuds", price: 2500 },
+        { name: "Smart Watch", price: 4000 },
+      ],
+    },
+    {
+      name: "Cafe Delight 🍰",
+      tagline: "Sweet treats & beverages",
+      category: "Food",
+      items: [
+        { name: "Chocolate Cake", price: 200 },
+        { name: "Cold Coffee", price: 120 },
+      ],
+    },
+    {
+      name: "FitZone Gym 💪",
+      tagline: "Your fitness journey starts here",
+      category: "Fitness",
+      items: [
+        { name: "Monthly Membership", price: 1500 },
+        { name: "Personal Trainer", price: 3000 },
+      ],
+    },
+  ];
 
   return (
-    <div className="container">
-      <Header balance={balance} />
-      {purchaseStatus ? <p style={{ marginTop: "12px" }}>{purchaseStatus}</p> : null}
+    <div className="main">
+      <Header />
 
-      {businesses.length === 0 ? (
-        <p>No businesses found. Seed your database.</p>
-      ) : (
-        businesses.map((biz, index) => (
-          <BusinessCard
-            key={biz.id}
-            business={biz}
-            products={products[biz.id] || []}
-            onInvest={() => invest(biz.chainId || index + 1)}
-            onBuy={handlePurchase}
-          />
-        ))
-      )}
+      {/* HERO */}
+      <div className="hero">
+        <h1>Build Community.</h1>
+        <p>Support neighborhood businesses with micro-investments and rewards</p>
+      </div>
+
+      {/* FLOW SECTION */}
+      <div className="flow">
+        <div className="flow-card">💰 Invest</div>
+        <div className="flow-card">🪙 Earn</div>
+        <div className="flow-card">🛒 Spend</div>
+        <div className="flow-card">🧾 NFT</div>
+      </div>
+
+      {/* STATS */}
+      <div className="stats">
+        <div><h3>2</h3><p>Businesses</p></div>
+        <div><h3>4</h3><p>Shops</p></div>
+        <div><h3>10%</h3><p>Discount</p></div>
+        <div><h3>LRT</h3><p>Token</p></div>
+      </div>
+
+      {/* BALANCE */}
+      <div className="balance-card">
+        <h3>Your LRT Token Balance</h3>
+        <h2>{balance} LRT</h2>
+      </div>
+
+      {/* BUSINESSES */}
+      <h2 className="section-title">🏪 Local Businesses</h2>
+
+      {businesses.map((biz) => {
+        const percent = (biz.raised / biz.goal) * 100;
+
+        return (
+          <div key={biz.id} className="business-card">
+            <div className="left">
+              <h3>{biz.name}</h3>
+              <p>{biz.tagline}</p>
+              <span className="category">{biz.category}</span>
+            </div>
+
+            <div className="right">
+              <h4>₹{biz.goal}</h4>
+              <button
+                className="btn"
+                disabled={loading}
+                onClick={() => invest(biz.id)}
+              >
+                {loading ? "Processing..." : "Invest"}
+              </button>
+            </div>
+
+            <div className="progress">
+              <div
+                className="progress-fill"
+                style={{ width: percent + "%" }}
+              ></div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* SHOPS */}
+      <h2 className="section-title">🛒 Spend Your Rewards</h2>
+
+      {shops.map((shop, index) => (
+        <div key={index} className="shop-card">
+          <h3>{shop.name}</h3>
+          <p>{shop.tagline}</p>
+          <span className="category">{shop.category}</span>
+
+          {shop.items.map((item, i) => (
+            <div key={i} className="shop-item">
+              <div>
+                <h4>{item.name}</h4>
+                <p>₹{item.price}</p>
+              </div>
+
+              <button
+                className="buy-btn"
+                disabled={loading}
+                onClick={() => buyItem(item.price)}
+              >
+                {loading ? "Processing..." : "Buy"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
