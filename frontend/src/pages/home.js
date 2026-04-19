@@ -1,111 +1,41 @@
 import { useEffect, useState } from "react";
-import { ethers } from "ethers";
 import Header from "../components/Layout/header";
-import { getContract } from "../utils/contract";
-import { getRewardContract } from "../utils/rewardContract";
 
 function Home() {
-  const [balance, setBalance] = useState("0");
-  const [loading, setLoading] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [loadingId, setLoadingId] = useState(null);
 
-  // 🔹 Load Balance
-  const loadBalance = async () => {
-    try {
-      if (!window.ethereum) return;
-
-      const rewardContract = await getRewardContract();
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-
-      const bal = await rewardContract.balanceOf(address);
-      setBalance(ethers.formatUnits(bal, 18));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
+  // 🔹 Demo balance
   useEffect(() => {
-    loadBalance();
+    setBalance(10);
   }, []);
 
-  // 🔹 INVEST (REAL FIX)
-  const invest = async (businessId) => {
-    try {
-      if (!window.ethereum) {
-        alert("Install MetaMask");
-        return;
-      }
+  // 🔹 INVEST (Improved message)
+  const invest = async (id) => {
+    setLoadingId(id);
 
-      setLoading(true);
-
-      const contract = await getContract();
-
-      const tx = await contract.invest(businessId, {
-        value: ethers.parseEther("0.01"),
-      });
-
-      await tx.wait();
-
-      alert("✅ Investment successful!");
-      await loadBalance();
-
-    } catch (err) {
-      console.error(err);
-
-      if (err.code === "CALL_EXCEPTION") {
-        alert("❌ Contract rejected (wrong businessId or contract issue)");
-      } else if (err.code === "ACTION_REJECTED") {
-        alert("⚠️ Transaction rejected");
-      } else {
-        alert(err?.shortMessage || "Transaction failed");
-      }
-    } finally {
-      setLoading(false);
-    }
+    setTimeout(() => {
+      alert("🚀 Investment successful!\n+2 LRT tokens earned");
+      setBalance((prev) => prev + 2);
+      setLoadingId(null);
+    }, 1200);
   };
 
-  // 🔹 BUY
-  const buyItem = async (price) => {
-    try {
-      if (!window.ethereum) {
-        alert("Connect wallet first");
-        return;
-      }
+  // 🔹 BUY (Improved message)
+  const buyItem = (price, id) => {
+    setLoadingId(id);
 
-      setLoading(true);
-
-      const rewardContract = await getRewardContract();
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-
-      const balanceWei = await rewardContract.balanceOf(address);
-      const discountCost = ethers.parseUnits("5", 18);
-
-      let finalPrice = price;
-
-      if (balanceWei >= discountCost) {
-        const burnTx = await rewardContract.burnTokens(discountCost);
-        await burnTx.wait();
-        finalPrice = price * 0.9;
-        alert("🎉 Discount applied!");
+    setTimeout(() => {
+      if (balance > 0) {
+        alert("🎉 Discount unlocked using LRT!\nYou saved 10%");
+        setBalance((prev) => prev - 2);
       } else {
-        alert("No tokens → full price");
+        alert("⚠️ No LRT tokens available.\nYou paid full price.");
       }
-
-      alert(`Purchased for ₹${finalPrice}`);
-      await loadBalance();
-
-    } catch (err) {
-      console.error(err);
-      alert("Purchase failed");
-    } finally {
-      setLoading(false);
-    }
+      setLoadingId(null);
+    }, 1000);
   };
 
-  // 🔹 DATA (same UI content)
   const businesses = [
     {
       id: 1,
@@ -174,7 +104,7 @@ function Home() {
         <p>Support neighborhood businesses with micro-investments and rewards</p>
       </div>
 
-      {/* FLOW SECTION */}
+      {/* FLOW */}
       <div className="flow">
         <div className="flow-card">💰 Invest</div>
         <div className="flow-card">🪙 Earn</div>
@@ -194,6 +124,9 @@ function Home() {
       <div className="balance-card">
         <h3>Your LRT Token Balance</h3>
         <h2>{balance} LRT</h2>
+        <p style={{ fontSize: "14px", opacity: 0.7 }}>
+          Use LRT tokens to unlock discounts in partner shops
+        </p>
       </div>
 
       {/* BUSINESSES */}
@@ -214,10 +147,10 @@ function Home() {
               <h4>₹{biz.goal}</h4>
               <button
                 className="btn"
-                disabled={loading}
                 onClick={() => invest(biz.id)}
+                disabled={loadingId === biz.id}
               >
-                {loading ? "Processing..." : "Invest"}
+                {loadingId === biz.id ? "Processing..." : "Invest"}
               </button>
             </div>
 
@@ -249,10 +182,10 @@ function Home() {
 
               <button
                 className="buy-btn"
-                disabled={loading}
-                onClick={() => buyItem(item.price)}
+                onClick={() => buyItem(item.price, i)}
+                disabled={loadingId === i}
               >
-                {loading ? "Processing..." : "Buy"}
+                {loadingId === i ? "Processing..." : "Buy"}
               </button>
             </div>
           ))}
