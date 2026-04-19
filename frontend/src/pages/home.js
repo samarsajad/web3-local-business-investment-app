@@ -9,6 +9,8 @@ import BusinessCard from "../components/Business/BusinessCard";
 import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
 
+import AIRecommendationCard from "../components/AI/AICard";
+
 function Home() {
   const [businesses, setBusinesses] = useState([]);
   const [products, setProducts] = useState({});
@@ -16,21 +18,37 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [purchaseStatus, setPurchaseStatus] = useState("");
 
+  const [aiRecommendation, setAiRecommendation] = useState("");
+  const [recommendedBusinessName, setRecommendedBusinessName] = useState("");
+  const [aiModelInfo, setAiModelInfo] = useState(null);
+  const [aiTopBreakdown, setAiTopBreakdown] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
   useEffect(() => {
     fetchData();
     loadBalance();
   }, []);
 
-  // 🔹 Fetch businesses + products
+  useEffect(() => {
+    if (businesses.length > 0) {
+      fetchAIRecommendation();
+    }
+  }, [businesses, products]);
+
   const fetchData = async () => {
     try {
       const bizSnap = await getDocs(collection(db, "businesses"));
       const prodSnap = await getDocs(collection(db, "products"));
 
-      const bizData = bizSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const bizData = bizSnap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...data,
+          docId: doc.id,
+          id: data.id ?? doc.id,
+        };
+      });
 
       const grouped = {};
 
@@ -82,10 +100,7 @@ function Home() {
       const onChainBusinesses = [];
       for (let i = 1; i <= count; i += 1) {
         const business = await contract.businesses(i);
-        onChainBusinesses.push({
-          id: i,
-          name: business.name,
-        });
+        onChainBusinesses.push({ id: i, name: business.name });
       }
 
       const idByName = new Map(
@@ -109,7 +124,6 @@ function Home() {
     }
   };
 
-  // 🔹 Load token balance
   const loadBalance = async () => {
     try {
       if (!window.ethereum) return;
@@ -126,7 +140,49 @@ function Home() {
     }
   };
 
-  // 🔹 Invest
+  const fetchAIRecommendation = async () => {
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+
+      const res = await fetch(`${backendUrl}/api/ai/recommend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ businesses, productsByBusiness: products }),
+      });
+
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => ({}));
+        throw new Error(errPayload?.error || "Failed to fetch AI recommendation");
+      }
+
+      const data = await res.json();
+      setAiRecommendation(data?.recommendation || "No AI recommendation returned.");
+      setRecommendedBusinessName(data?.recommendedBusiness?.name || "");
+      setAiModelInfo(data?.model || null);
+      setAiTopBreakdown(data?.recommendedBusiness?.breakdown || null);
+    } catch (err) {
+      console.error("AI error:", err);
+      setAiRecommendation("");
+      setRecommendedBusinessName("");
+      setAiModelInfo(null);
+      setAiTopBreakdown(null);
+      setAiError(err?.message || "Unable to fetch AI recommendation");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const isRecommended = (bizName) => {
+    if (!recommendedBusinessName) return false;
+    return recommendedBusinessName.toLowerCase() === (bizName || "").toLowerCase();
+  };
+
   const invest = async (businessId) => {
     try {
       const contract = await getContract();
@@ -161,16 +217,12 @@ function Home() {
           "Investment successful, but no new LRT was added (you may have reached the 5 rewarded investments limit)."
         );
       }
-
-      console.log("LRT before invest:", ethers.formatUnits(beforeBal, 18));
-      console.log("LRT after invest:", ethers.formatUnits(afterBal, 18));
     } catch (err) {
       console.error(err);
       alert(err?.reason || err?.message || "Investment failed");
     }
   };
 
-  // 🔹 Purchase + NFT mint
   const handlePurchase = async (businessId, product) => {
     try {
       setPurchaseStatus(`Preparing purchase for ${product.name}...`);
@@ -185,7 +237,6 @@ function Home() {
 
       let finalPrice = product.price;
 
-      // 🔹 Apply discount
       if (bal >= cost) {
         const burnTx = await reward.burnTokens(cost);
         await burnTx.wait();
@@ -196,8 +247,7 @@ function Home() {
         alert("Not enough tokens, paying full price.");
       }
 
-      // 🔹 Purchase confirmation
-      setPurchaseStatus(`Bought ${product.name} for ₹${finalPrice}. Minting NFT...`);
+      setPurchaseStatus(`Bought ${product.name} for Rs.${finalPrice}. Minting NFT...`);
 
       const orderId =
         window.crypto?.randomUUID?.() ||
@@ -239,7 +289,7 @@ function Home() {
       }
 
       setPurchaseStatus(`NFT minted successfully for ${product.name}.`);
-      alert("🎉 NFT minted successfully!");
+      alert("NFT minted successfully!");
 
       await loadBalance();
     } catch (err) {
@@ -249,7 +299,6 @@ function Home() {
     }
   };
 
-  // 🔹 Loading UI
   if (loading) {
     return (
       <div className="container">
@@ -261,6 +310,15 @@ function Home() {
   return (
     <div className="container">
       <Header balance={balance} />
+      <AIRecommendationCard
+        recommendation={aiRecommendation}
+        recommendedBusinessName={recommendedBusinessName}
+        modelInfo={aiModelInfo}
+        topBreakdown={aiTopBreakdown}
+        loading={aiLoading}
+        error={aiError}
+      />
+
       {purchaseStatus ? <p style={{ marginTop: "12px" }}>{purchaseStatus}</p> : null}
 
       {businesses.length === 0 ? (
@@ -268,11 +326,12 @@ function Home() {
       ) : (
         businesses.map((biz, index) => (
           <BusinessCard
-            key={biz.id}
+            key={biz.docId || biz.id || index}
             business={biz}
-            products={products[biz.id] || []}
+            products={products[biz.id] || products[biz.docId] || []}
             onInvest={() => invest(biz.chainId || index + 1)}
             onBuy={handlePurchase}
+            isRecommended={isRecommended(biz.name)}
           />
         ))
       )}

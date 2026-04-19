@@ -4,7 +4,7 @@ const { getRecommendation } = require("../services/aiService");
 
 router.post("/recommend", async (req, res) => {
   try {
-    const { businesses } = req.body || {};
+    const { businesses, productsByBusiness } = req.body || {};
 
     if (!Array.isArray(businesses) || businesses.length === 0) {
       return res.status(400).json({
@@ -12,9 +12,9 @@ router.post("/recommend", async (req, res) => {
       });
     }
 
-    const recommendation = await getRecommendation(businesses);
+    const result = await getRecommendation(businesses, productsByBusiness || {});
 
-    res.json({ recommendation });
+    res.json(result);
   } catch (err) {
     console.error("AI ERROR:", err);
     const status = Number(err?.status) || 500;
