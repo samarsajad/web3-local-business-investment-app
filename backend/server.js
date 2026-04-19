@@ -25,8 +25,11 @@ const wallet = new ethers.Wallet(mintSignerPrivateKey, provider);
 const nftContract = new ethers.Contract(nftContractAddress, PurchaseNFT.abi, wallet);
 const usedOrders = new Set();
 
+const aiRoutes = require("./routes/ai");
+
 app.use(cors());
 app.use(express.json());
+app.use("/api/ai", aiRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
