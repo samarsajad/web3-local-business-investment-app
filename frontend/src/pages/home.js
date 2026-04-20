@@ -358,11 +358,11 @@ function Home({ user, account }) {
       <div className="section-heading" id="businesses">
         <div>
           <span className="eyebrow">Marketplace</span>
-          <h2>Fund businesses and buy products</h2>
+          <h2>Explore local businesses</h2>
         </div>
         <p>
-          Businesses are synced from Firestore and linked to the current contract state,
-          so you can invest and purchase from one screen.
+          Start by picking a business. Each business has its own page where you can
+          view products and make purchases.
         </p>
       </div>
 
@@ -372,17 +372,20 @@ function Home({ user, account }) {
           <p>Seed your database to populate the dashboard.</p>
         </div>
       ) : (
-        businesses.map((biz, index) => (
-          <BusinessCard
-            key={biz.docId || biz.id || index}
-            business={biz}
-            products={products[biz.id] || products[biz.docId] || []}
-            onInvest={() => invest(biz.chainId || index + 1)}
-            onBuy={handlePurchase}
-            isRecommended={isRecommended(biz.name)}
-            canInvest={Boolean(user)}
-          />
-        ))
+        <div className="businesses-grid">
+          {businesses.map((biz, index) => (
+            <BusinessCard
+              key={biz.docId || biz.id || index}
+              business={biz}
+              products={products[biz.id] || products[biz.docId] || []}
+              onInvest={() => invest(biz.chainId || index + 1)}
+              onBuy={handlePurchase}
+              isRecommended={isRecommended(biz.name)}
+              canInvest={Boolean(user)}
+              showProducts={false}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

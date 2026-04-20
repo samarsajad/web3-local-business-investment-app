@@ -7,33 +7,43 @@ function Header({ balance, user, account }) {
 
   return (
     <section className="hero-banner" id="overview">
-      <div className="hero-copy">
-        <span className="eyebrow">Local business finance hub</span>
-        <h1>Invest in local businesses with a dashboard that feels current and clear.</h1>
-        <p>
-          Track reward tokens, compare AI recommendations, and complete purchases with
-          a secure NFT minting flow.
-        </p>
+      <div className="hero-content">
+        <div className="hero-copy">
+          <span className="eyebrow">Local business finance hub</span>
+          <h1>Invest in local businesses with a dashboard that feels current and clear.</h1>
+          <p>
+            Discover promising businesses, make confident investments, and unlock better
+            value when you shop from the same local marketplace.
+          </p>
 
-        <div className="hero-pills">
-          <span className="hero-pill">Signed in as {userLabel}</span>
-          <span className="hero-pill">{accountLabel}</span>
+          <div className="hero-pills">
+            <span className="hero-pill">Signed in as {userLabel}</span>
+            <span className="hero-pill">{accountLabel}</span>
+          </div>
+        </div>
+
+        <div className="hero-metrics">
+          <div className="hero-metric">
+            <span>Your rewards</span>
+            <strong>{balanceLabel} points available</strong>
+          </div>
+          <div className="hero-metric">
+            <span>Best opportunity</span>
+            <strong>AI highlights top local picks</strong>
+          </div>
+          <div className="hero-metric">
+            <span>Neighborhood discovery</span>
+            <strong>Map links for every business</strong>
+          </div>
         </div>
       </div>
 
-      <div className="hero-metrics">
-        <div className="hero-metric">
-          <span>Reward balance</span>
-          <strong>{balanceLabel} LRT</strong>
-        </div>
-        <div className="hero-metric">
-          <span>Live mode</span>
-          <strong>On-chain + Firestore</strong>
-        </div>
-        <div className="hero-metric">
-          <span>Purchase flow</span>
-          <strong>Backend verified NFT minting</strong>
-        </div>
+      <div className="hero-visual">
+        <img
+          className="hero-visual__image"
+          src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80"
+          alt="People reviewing investment charts in a modern workspace"
+        />
       </div>
     </section>
   );

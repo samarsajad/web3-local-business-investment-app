@@ -1,6 +1,15 @@
 import ProductCard from "../Products/ProductCard";
+import { Link } from "react-router-dom";
 
-function BusinessCard({ business, products, onInvest, onBuy, isRecommended, canInvest }) {
+function BusinessCard({
+  business,
+  products,
+  onInvest,
+  onBuy,
+  isRecommended,
+  canInvest,
+  showProducts = true,
+}) {
   const fundingGoal = Number(business.fundingGoal || 0);
   const raisedFunds = Number(
     business.totalFundsEth ??
@@ -17,7 +26,12 @@ function BusinessCard({ business, products, onInvest, onBuy, isRecommended, canI
   return (
     <article className={`business-card ${isRecommended ? "business-card--featured" : ""}`.trim()}>
       <div className="business-card__header">
-        <h2 className="business-card__title">{business.name}</h2>
+        <Link
+          to={`/business/${encodeURIComponent(business.docId || business.id)}`}
+          className="business-card__title-link"
+        >
+          <h2 className="business-card__title">{business.name}</h2>
+        </Link>
 
         {isRecommended && (
           <span className="business-card__badge">AI Recommended</span>
@@ -73,16 +87,18 @@ function BusinessCard({ business, products, onInvest, onBuy, isRecommended, canI
         {canInvest ? "Invest" : "Login to invest"}
       </button>
 
-      <div className="business-card__products">
-        {products?.map((product, i) => (
-          <ProductCard
-            key={i}
-            product={product}
-            businessId={business.id}
-            onBuy={onBuy}
-          />
-        ))}
-      </div>
+      {showProducts && (
+        <div className="business-card__products">
+          {products?.map((product, i) => (
+            <ProductCard
+              key={i}
+              product={product}
+              businessId={business.id}
+              onBuy={onBuy}
+            />
+          ))}
+        </div>
+      )}
     </article>
   );
 }

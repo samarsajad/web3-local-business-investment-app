@@ -1,0 +1,291 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { collection, getDocs } from "firebase/firestore";
+import { ethers } from "ethers";
+
+import { db } from "../../../firebase";
+import { getContract } from "../../../utils/contract";
+import { getRewardContract } from "../../../utils/rewardContract";
+import BusinessCard from "../../../components/Business/BusinessCard";
+
+function BusinessDetailsPage({ user }) {
+  const { id } = useParams();
+  const decodedId = decodeURIComponent(id || "");
+
+  const [businesses, setBusinesses] = useState([]);
+  const [productsByBusiness, setProductsByBusiness] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [purchaseStatus, setPurchaseStatus] = useState("");
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const bizSnap = await getDocs(collection(db, "businesses"));
+      const prodSnap = await getDocs(collection(db, "products"));
+
+      const bizData = bizSnap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...data,
+          docId: doc.id,
+          id: data.id ?? doc.id,
+        };
+      });
+
+      const grouped = {};
+      prodSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        if (!grouped[data.businessId]) {
+          grouped[data.businessId] = [];
+        }
+        grouped[data.businessId].push(data);
+      });
+
+      const syncedBusinesses = await syncBusinessesToContract(bizData);
+      setBusinesses(syncedBusinesses);
+      setProductsByBusiness(grouped);
+    } catch (err) {
+      console.error("Business page load error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const syncBusinessesToContract = async (bizData) => {
+    if (!window.ethereum || bizData.length === 0) {
+      return bizData.map((biz, index) => ({
+        ...biz,
+        chainId: index + 1,
+        totalFundsEth: Number(biz.totalFundsEth || 0),
+      }));
+    }
+
+    try {
+      const contract = await getContract();
+      const count = Number(await contract.businessCount());
+
+      if (count === 0) {
+        return bizData.map((biz, index) => ({
+          ...biz,
+          chainId: index + 1,
+          totalFundsEth: Number(biz.totalFundsEth || 0),
+        }));
+      }
+
+      const onChainBusinesses = [];
+      for (let i = 1; i <= count; i += 1) {
+        const business = await contract.businesses(i);
+        onChainBusinesses.push({
+          id: i,
+          name: business.name,
+          fundingGoal: Number(business.fundingGoal),
+          totalFundsEth: Number(ethers.formatEther(business.totalFunds)),
+        });
+      }
+
+      const onChainByName = new Map(
+        onChainBusinesses.map((business) => [business.name.trim().toLowerCase(), business])
+      );
+
+      return bizData.map((biz, index) => {
+        const onChain = onChainByName.get((biz.name || "").trim().toLowerCase());
+        return {
+          ...biz,
+          chainId: onChain?.id ?? index + 1,
+          fundingGoal: onChain?.fundingGoal ?? Number(biz.fundingGoal || 1000),
+          totalFundsEth: onChain?.totalFundsEth ?? Number(biz.totalFundsEth || 0),
+        };
+      });
+    } catch (err) {
+      console.error("Contract sync error:", err);
+      return bizData.map((biz, index) => ({
+        ...biz,
+        chainId: index + 1,
+        totalFundsEth: Number(biz.totalFundsEth || 0),
+      }));
+    }
+  };
+
+  const selectedBusiness = useMemo(
+    () => businesses.find((biz) => String(biz.docId || biz.id) === decodedId),
+    [businesses, decodedId]
+  );
+
+  const invest = async (businessId) => {
+    if (!user) {
+      alert("Please login first to invest.");
+      return;
+    }
+
+    try {
+      const contract = await getContract();
+      const rewardContract = await getRewardContract();
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const beforeBal = await rewardContract.balanceOf(userAddress);
+      const tx = await contract.invest(businessId, {
+        value: ethers.parseEther("0.01"),
+      });
+      await tx.wait();
+
+      setBusinesses((prev) =>
+        prev.map((biz) =>
+          biz.chainId === businessId
+            ? {
+                ...biz,
+                totalFundsEth: Number(biz.totalFundsEth || 0) + 0.01,
+              }
+            : biz
+        )
+      );
+
+      const afterBal = await rewardContract.balanceOf(userAddress);
+      const rewardDelta = afterBal - beforeBal;
+
+      if (rewardDelta > 0n) {
+        alert(
+          `Investment successful! You earned ${ethers.formatUnits(rewardDelta, 18)} LRT.`
+        );
+      } else {
+        alert("Investment successful.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err?.reason || err?.message || "Investment failed");
+    }
+  };
+
+  const handlePurchase = async (businessId, product) => {
+    try {
+      setPurchaseStatus(`Preparing purchase for ${product.name}...`);
+      const reward = await getRewardContract();
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+
+      const bal = await reward.balanceOf(userAddress);
+      const cost = ethers.parseUnits("5", 18);
+
+      let finalPrice = product.price;
+      if (bal >= cost) {
+        const burnTx = await reward.burnTokens(cost);
+        await burnTx.wait();
+        finalPrice = Math.floor(product.price * 0.9);
+        alert("Discount applied using tokens!");
+      } else {
+        alert("Not enough tokens, paying full price.");
+      }
+
+      const orderId =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const mintMessage = [
+        "Mint NFT for purchase",
+        `user:${userAddress}`,
+        `business:${businessId}`,
+        `product:${product.name}`,
+        `price:${finalPrice}`,
+        `order:${orderId}`,
+      ].join("\n");
+
+      const signature = await signer.signMessage(mintMessage);
+
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+      const response = await fetch(`${backendUrl}/mint-nft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAddress,
+          orderId,
+          businessId,
+          productName: product.name,
+          price: finalPrice,
+          message: mintMessage,
+          signature,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Backend NFT mint failed");
+      }
+
+      setPurchaseStatus(`Purchased ${product.name} for Rs.${finalPrice}. NFT minted.`);
+      alert("Purchase successful and NFT minted!");
+    } catch (err) {
+      console.error(err);
+      setPurchaseStatus("");
+      alert(err?.reason || err?.message || "Purchase failed");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container dashboard-loading">
+        <div className="loading-card">
+          <h3>Loading business...</h3>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedBusiness) {
+    return (
+      <div className="container dashboard-page">
+        <div className="empty-state">
+          <h3>Business not found</h3>
+          <p>The business page you opened does not exist.</p>
+          <Link to="/" className="business-card__open-link">
+            Back to businesses
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container dashboard-page">
+      <div className="section-heading" id="businesses">
+        <div>
+          <span className="eyebrow">Business Page</span>
+          <h2>{selectedBusiness.name}</h2>
+        </div>
+        <p>
+          View this business profile and browse all its available products.
+        </p>
+      </div>
+
+      <div className="business-page-topbar">
+        <Link to="/" className="business-card__open-link">
+          Back to all businesses
+        </Link>
+      </div>
+
+      {purchaseStatus ? <div className="status-banner">{purchaseStatus}</div> : null}
+
+      <BusinessCard
+        business={selectedBusiness}
+        products={
+          productsByBusiness[selectedBusiness.id] ||
+          productsByBusiness[selectedBusiness.docId] ||
+          []
+        }
+        onInvest={() => invest(selectedBusiness.chainId || 1)}
+        onBuy={handlePurchase}
+        canInvest={Boolean(user)}
+        showProducts
+      />
+    </div>
+  );
+}
+
+export default BusinessDetailsPage;

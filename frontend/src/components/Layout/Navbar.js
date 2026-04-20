@@ -1,4 +1,6 @@
 import Login from "../Login";
+import logo from "../../assets/logo.png";
+import { Link } from "react-router-dom";
 
 function Navbar({ user, account, setUser, onConnectWallet, onLogout }) {
   const accountLabel = account
@@ -10,17 +12,19 @@ function Navbar({ user, account, setUser, onConnectWallet, onLogout }) {
   return (
     <header className="site-header" id="top">
       <div className="navbar container-wide">
-        <a className="brand" href="#top" aria-label="Community Local Economy home">
-          <span className="brand-mark">LE</span>
+        <Link className="brand" to="/" aria-label="Community Local Economy home">
+          <span className="brand-mark" aria-hidden="true">
+            <img src={logo} alt="LocalInvest logo" className="brand-mark__image" />
+          </span>
           <span className="brand-copy">
             <strong>Community Local Economy</strong>
             <span>Invest locally with web3 rails</span>
           </span>
-        </a>
+        </Link>
 
         <nav className="nav-links" aria-label="Primary">
-          <a href="#overview">Overview</a>
-          <a href="#businesses">Businesses</a>
+          <Link to="/">Overview</Link>
+          <Link to="/#businesses">Businesses</Link>
           <a href="#footer">Contact</a>
         </nav>
 

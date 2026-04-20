@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { signOut } from "firebase/auth";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { auth } from "./firebase";
 import { connectWallet } from "./utils/wallet";
 import Home from "./pages/home";
+import BusinessDetailsPage from "./pages/business/[id]";
 import Navbar from "./components/Layout/Navbar";
 import Footer from "./components/Layout/Footer";
 import "./styles/global.css";
@@ -34,21 +36,29 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
-      <Navbar
-        user={user}
-        account={account}
-        setUser={setUser}
-        onConnectWallet={handleConnect}
-        onLogout={handleLogout}
-      />
+    <BrowserRouter>
+      <div className="app-shell">
+        <Navbar
+          user={user}
+          account={account}
+          setUser={setUser}
+          onConnectWallet={handleConnect}
+          onLogout={handleLogout}
+        />
 
-      <main className="app-main">
-        <Home user={user} account={account} />
-      </main>
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Home user={user} account={account} />} />
+            <Route
+              path="/business/:id"
+              element={<BusinessDetailsPage user={user} />}
+            />
+          </Routes>
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </BrowserRouter>
   );
 }
 
