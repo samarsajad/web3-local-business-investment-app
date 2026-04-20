@@ -6,125 +6,74 @@ function BusinessCard({ business, products, onInvest, onBuy, isRecommended, canI
     business.totalFundsEth ??
       (typeof business.totalFunds === "number" ? business.totalFunds : 0)
   );
+  const locationText = business.location || `${business.name} local business`;
+  const mapUrl = `https://www.google.com/maps?q=${encodeURIComponent(
+    locationText
+  )}`;
 
   const safeGoal = fundingGoal > 0 ? fundingGoal : 1;
   const progress = Math.min((raisedFunds / safeGoal) * 100, 100);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: "16px",
-        padding: "20px",
-        marginBottom: "20px",
-        boxShadow: isRecommended
-          ? "0 6px 20px rgba(34,197,94,0.25)"  
-          : "0 4px 12px rgba(0,0,0,0.05)",
-        border: isRecommended ? "2px solid #22c55e" : "none",
-        transition: "0.3s ease",
-      }}
-    >
-      {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h2>{business.name}</h2>
+    <article className={`business-card ${isRecommended ? "business-card--featured" : ""}`.trim()}>
+      <div className="business-card__header">
+        <h2 className="business-card__title">{business.name}</h2>
 
         {isRecommended && (
-          <span
-            style={{
-              background: "#22c55e",
-              color: "white",
-              padding: "4px 10px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              fontWeight: "bold",
-            }}
-          >
-            ⭐ AI Recommended
-          </span>
+          <span className="business-card__badge">AI Recommended</span>
         )}
       </div>
 
-      <p style={{ color: "#666" }}>{business.description}</p>
+      <p className="business-card__description">{business.description}</p>
 
-      <div
-        style={{
-          marginTop: "12px",
-          padding: "12px",
-          borderRadius: "10px",
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "8px",
-            fontSize: "13px",
-            color: "#334155",
-            fontWeight: 600,
-          }}
+      <div className="business-card__location">
+        <a
+          href={mapUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open ${business.name} location in Google Maps`}
+          title="Open in Google Maps"
+          className="business-card__location-icon"
         >
+          📍
+        </a>
+        <a
+          href={mapUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="business-card__location-link"
+        >
+          {locationText}
+        </a>
+      </div>
+
+      <div className="business-card__funding">
+        <div className="business-card__funding-head">
           <span>Funding Progress</span>
           <span>
-            {raisedFunds.toFixed(2)} / {fundingGoal.toFixed(2)} ETH
+            {raisedFunds.toFixed(2)} / {fundingGoal.toFixed(2)} Rs
           </span>
         </div>
 
-        <div
-          style={{
-            width: "100%",
-            height: "8px",
-            borderRadius: "999px",
-            background: "#e2e8f0",
-            overflow: "hidden",
-          }}
-        >
+        <div className="business-card__funding-track">
           <div
+            className="business-card__funding-fill"
             style={{
               width: `${progress}%`,
-              height: "100%",
-              borderRadius: "999px",
-              background: "linear-gradient(90deg, #22c55e, #16a34a)",
-              transition: "width 0.35s ease",
             }}
           />
         </div>
       </div>
 
-      {/* 🔥 INVEST BUTTON */}
       <button
         onClick={onInvest}
         disabled={!canInvest}
-        style={{
-          padding: "8px 14px",
-          background: !canInvest
-            ? "#94a3b8"
-            : isRecommended
-            ? "#22c55e"
-            : "#6366f1",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          marginTop: "10px",
-          cursor: canInvest ? "pointer" : "not-allowed",
-          fontWeight: "bold",
-          opacity: canInvest ? 1 : 0.8,
-        }}
+        className={`business-card__invest ${isRecommended ? "business-card__invest--featured" : ""}`.trim()}
       >
         {canInvest ? "Invest" : "Login to invest"}
       </button>
 
-      {/* 🔥 PRODUCTS GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "15px",
-          marginTop: "15px",
-        }}
-      >
+      <div className="business-card__products">
         {products?.map((product, i) => (
           <ProductCard
             key={i}
@@ -134,7 +83,7 @@ function BusinessCard({ business, products, onInvest, onBuy, isRecommended, canI
           />
         ))}
       </div>
-    </div>
+    </article>
   );
 }
 

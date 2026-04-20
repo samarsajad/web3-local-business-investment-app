@@ -28,6 +28,85 @@ const genAI = process.env.GOOGLE_API_KEY
   ? new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
   : null;
 
+const AI_MODEL_CANDIDATES = String(
+  process.env.GEMINI_MODELS || "gemini-2.5-flash,gemini-1.5-flash"
+)
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
+
+const AI_MAX_RETRIES = Number(process.env.AI_MAX_RETRIES || 2);
+const AI_RETRY_BASE_MS = Number(process.env.AI_RETRY_BASE_MS || 350);
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function getErrorStatusCode(error) {
+  const directStatus = Number(error?.status || error?.statusCode);
+  if (Number.isFinite(directStatus) && directStatus > 0) {
+    return directStatus;
+  }
+
+  const message = String(error?.message || "");
+  const match = message.match(/\[(\d{3})\s/);
+  if (match) {
+    return Number(match[1]);
+  }
+
+  return 0;
+}
+
+function isRetryableError(error) {
+  const status = getErrorStatusCode(error);
+  if (RETRYABLE_STATUS_CODES.has(status)) {
+    return true;
+  }
+
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("service unavailable") ||
+    message.includes("high demand") ||
+    message.includes("tempor")
+  );
+}
+
+function summarizeError(error) {
+  const status = getErrorStatusCode(error);
+  const message = String(error?.message || error || "Unknown AI error");
+  return status ? `[${status}] ${message}` : message;
+}
+
+async function generateWithRetry(modelName, prompt) {
+  const model = genAI.getGenerativeModel({ model: modelName });
+
+  for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt += 1) {
+    try {
+      const result = await model.generateContent(prompt);
+      const text = result?.response?.text?.();
+      if (text) {
+        return text;
+      }
+
+      throw new Error(`Model ${modelName} returned an empty response`);
+    } catch (error) {
+      const hasMoreAttempts = attempt < AI_MAX_RETRIES;
+      if (!isRetryableError(error) || !hasMoreAttempts) {
+        throw error;
+      }
+
+      const backoff = AI_RETRY_BASE_MS * 2 ** attempt;
+      const jitter = Math.floor(Math.random() * 150);
+      await wait(backoff + jitter);
+    }
+  }
+
+  throw new Error(`Model ${modelName} did not return a response`);
+}
+
 function clamp(value, min = 0, max = 100) {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
@@ -172,11 +251,11 @@ function buildFallbackExplanation(topBusiness) {
   const topFactors = Object.entries(topBusiness.breakdown)
     .filter(([key]) => key !== "weightedScore")
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([key, value]) => `${key} (${value})`)
-    .join(", ");
+    .slice(0, 2)
+    .map(([key]) => key)
+    .join(" and ");
 
-  return `${topBusiness.name} ranks highest with a weighted score of ${topBusiness.score}. Top drivers: ${topFactors}.`;
+  return `Best pick right now: ${topBusiness.name}. Strongest factors: ${topFactors}.`;
 }
 
 async function generateLLMExplanation(topBusiness, rankedBusinesses) {
@@ -184,10 +263,8 @@ async function generateLLMExplanation(topBusiness, rankedBusinesses) {
     return buildFallbackExplanation(topBusiness);
   }
 
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `
-You are an investment analyst.
+  const prompt = `
+You are a product recommender for a consumer app.
 Use the weighted model scores exactly as factual inputs.
 
 Top business:
@@ -196,18 +273,24 @@ ${JSON.stringify(topBusiness, null, 2)}
 Top 3 ranked businesses:
 ${JSON.stringify(rankedBusinesses.slice(0, 3), null, 2)}
 
-Write a concise 2-3 line recommendation.
-Mention the top 2 scoring factors and include one caution.
+Write exactly 1 short sentence (max 20 words).
+Format: "Best pick: <name> — <reason based on top 1-2 scoring factors>."
+Do not mention scores, weights, model names, cautions, or risk warnings.
 Do not invent numbers.
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result?.response?.text?.();
-    return text || buildFallbackExplanation(topBusiness);
-  } catch (error) {
-    console.error("AI explanation fallback:", error?.message || error);
-    return buildFallbackExplanation(topBusiness);
+  let lastError = null;
+
+  for (const modelName of AI_MODEL_CANDIDATES) {
+    try {
+      return await generateWithRetry(modelName, prompt);
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  console.warn("AI explanation fallback:", summarizeError(lastError));
+  return buildFallbackExplanation(topBusiness);
 }
 
 async function getRecommendation(businesses, productsByBusiness = {}) {

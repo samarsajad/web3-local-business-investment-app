@@ -165,7 +165,7 @@ function BusinessList() {
           >
             <h3>{biz.name}</h3>
             <p>{biz.description}</p>
-            <p>Funding Goal: ₹{biz.fundingGoal}</p>
+            <p>Funding Goal: Rs{biz.fundingGoal}</p>
 
             <button onClick={() => invest(businessId)}>
               Invest

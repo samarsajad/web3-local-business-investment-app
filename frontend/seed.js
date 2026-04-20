@@ -24,7 +24,7 @@ async function seed() {
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  const upsertBusiness = async (name, description, fundingGoal) => {
+  const upsertBusiness = async (name, description, fundingGoal, location) => {
     const q = query(collection(db, "businesses"), where("name", "==", name));
     const snap = await getDocs(q);
     if (!snap.empty) {
@@ -35,6 +35,7 @@ async function seed() {
           name,
           description,
           fundingGoal,
+          location,
         },
         { merge: true }
       );
@@ -45,6 +46,7 @@ async function seed() {
       name,
       description,
       fundingGoal,
+      location,
     });
     return ref.id;
   };
@@ -71,62 +73,72 @@ async function seed() {
   const bakeryId = await upsertBusiness(
     "Local Bakery",
     "Fresh bread & cakes",
-    1000
+    1000,
+    "MG Road, Bengaluru"
   );
 
   const cafeId = await upsertBusiness(
     "Local Cafe",
     "Coffee & snacks",
-    1200
+    1200,
+    "Koramangala, Bengaluru"
   );
 
   // NEW BUSINESSES
   const groceryId = await upsertBusiness(
     "Green Grocery",
     "Fresh fruits and vegetables",
-    1500
+    1500,
+    "Indiranagar, Bengaluru"
   );
 
   const bookstoreId = await upsertBusiness(
     "City Bookstore",
     "Books and stationery",
-    800
+    800,
+    "Jayanagar, Bengaluru"
   );
 
   const pharmacyId = await upsertBusiness(
     "Health Pharmacy",
     "Medicines and health products",
-    2000
+    2000,
+    "HSR Layout, Bengaluru"
   );
 
   const clothingId = await upsertBusiness(
     "Trendy Clothes",
     "Fashion and apparel",
-    1800
+    1800,
+    "Brigade Road, Bengaluru"
   );
 
   const electronicsId = await upsertBusiness(
     "Tech Store",
     "Electronics and gadgets",
-    3000
+    3000,
+    "Marathahalli, Bengaluru"
   );
 
   const dairyId = await upsertBusiness(
     "Dairy Farm",
     "Milk and dairy products",
-    1300
+    1300,
+    "Rajajinagar, Bengaluru"
   );
 
   const restaurantId = await upsertBusiness(
     "Family Restaurant",
     "Home-style meals",
-    2500
+    2500,
+    "BTM Layout, Bengaluru"
   );
 
   const salonId = await upsertBusiness(
     "Beauty Salon",
     "Hair and skincare services",
-    900
+    900,
+    "Malleshwaram, Bengaluru"
   );
 
   // PRODUCTS
