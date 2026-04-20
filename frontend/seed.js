@@ -68,22 +68,101 @@ async function seed() {
   };
 
   try {
-    const bakeryId = await upsertBusiness(
-      "Local Bakery",
-      "Fresh bread & cakes",
-      1000
-    );
-    const cafeId = await upsertBusiness("Local Cafe", "Coffee & snacks", 1200);
+  const bakeryId = await upsertBusiness(
+    "Local Bakery",
+    "Fresh bread & cakes",
+    1000
+  );
 
-    await addProductIfMissing("Chocolate Cake", 200, bakeryId);
-    await addProductIfMissing("Croissant", 80, bakeryId);
-    await addProductIfMissing("Cold Coffee", 120, cafeId);
+  const cafeId = await upsertBusiness(
+    "Local Cafe",
+    "Coffee & snacks",
+    1200
+  );
 
-    console.log("Seed complete: businesses/products are ready.");
-  } catch (error) {
-    console.error("Seed failed:", error);
-    process.exitCode = 1;
-  }
+  // NEW BUSINESSES
+  const groceryId = await upsertBusiness(
+    "Green Grocery",
+    "Fresh fruits and vegetables",
+    1500
+  );
+
+  const bookstoreId = await upsertBusiness(
+    "City Bookstore",
+    "Books and stationery",
+    800
+  );
+
+  const pharmacyId = await upsertBusiness(
+    "Health Pharmacy",
+    "Medicines and health products",
+    2000
+  );
+
+  const clothingId = await upsertBusiness(
+    "Trendy Clothes",
+    "Fashion and apparel",
+    1800
+  );
+
+  const electronicsId = await upsertBusiness(
+    "Tech Store",
+    "Electronics and gadgets",
+    3000
+  );
+
+  const dairyId = await upsertBusiness(
+    "Dairy Farm",
+    "Milk and dairy products",
+    1300
+  );
+
+  const restaurantId = await upsertBusiness(
+    "Family Restaurant",
+    "Home-style meals",
+    2500
+  );
+
+  const salonId = await upsertBusiness(
+    "Beauty Salon",
+    "Hair and skincare services",
+    900
+  );
+
+  // PRODUCTS
+  await addProductIfMissing("Chocolate Cake", 200, bakeryId);
+  await addProductIfMissing("Croissant", 80, bakeryId);
+  await addProductIfMissing("Cold Coffee", 120, cafeId);
+
+  await addProductIfMissing("Apples", 100, groceryId);
+  await addProductIfMissing("Bananas", 60, groceryId);
+
+  await addProductIfMissing("Notebook", 50, bookstoreId);
+  await addProductIfMissing("Pen Pack", 30, bookstoreId);
+
+  await addProductIfMissing("Paracetamol", 20, pharmacyId);
+  await addProductIfMissing("Vitamins", 150, pharmacyId);
+
+  await addProductIfMissing("T-Shirt", 400, clothingId);
+  await addProductIfMissing("Jeans", 1200, clothingId);
+
+  await addProductIfMissing("Headphones", 1500, electronicsId);
+  await addProductIfMissing("Mobile Charger", 300, electronicsId);
+
+  await addProductIfMissing("Milk", 60, dairyId);
+  await addProductIfMissing("Paneer", 200, dairyId);
+
+  await addProductIfMissing("Thali", 250, restaurantId);
+  await addProductIfMissing("Biryani", 300, restaurantId);
+
+  await addProductIfMissing("Haircut", 200, salonId);
+  await addProductIfMissing("Facial", 800, salonId);
+
+  console.log("Seed complete: businesses/products are ready.");
+} catch (error) {
+  console.error("Seed failed:", error);
+  process.exitCode = 1;
+}
 }
 
 seed();

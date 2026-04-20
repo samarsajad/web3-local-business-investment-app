@@ -11,7 +11,7 @@ import { getRewardContract } from "../utils/rewardContract";
 
 import AIRecommendationCard from "../components/AI/AICard";
 
-function Home() {
+function Home({ user, account }) {
   const [businesses, setBusinesses] = useState([]);
   const [products, setProducts] = useState({});
   const [balance, setBalance] = useState("0");
@@ -77,6 +77,7 @@ function Home() {
       return bizData.map((biz, index) => ({
         ...biz,
         chainId: index + 1,
+        totalFundsEth: Number(biz.totalFundsEth || 0),
       }));
     }
 
@@ -94,32 +95,44 @@ function Home() {
         return bizData.map((biz, index) => ({
           ...biz,
           chainId: index + 1,
+          totalFundsEth: 0,
         }));
       }
 
       const onChainBusinesses = [];
       for (let i = 1; i <= count; i += 1) {
         const business = await contract.businesses(i);
-        onChainBusinesses.push({ id: i, name: business.name });
+        onChainBusinesses.push({
+          id: i,
+          name: business.name,
+          fundingGoal: Number(business.fundingGoal),
+          totalFundsEth: Number(ethers.formatEther(business.totalFunds)),
+        });
       }
 
-      const idByName = new Map(
+      const onChainByName = new Map(
         onChainBusinesses.map((business) => [
           business.name.trim().toLowerCase(),
-          business.id,
+          business,
         ])
       );
 
-      return bizData.map((biz, index) => ({
-        ...biz,
-        chainId:
-          idByName.get((biz.name || "").trim().toLowerCase()) ?? index + 1,
-      }));
+      return bizData.map((biz, index) => {
+        const onChain = onChainByName.get((biz.name || "").trim().toLowerCase());
+
+        return {
+          ...biz,
+          chainId: onChain?.id ?? index + 1,
+          fundingGoal: onChain?.fundingGoal ?? Number(biz.fundingGoal || 1000),
+          totalFundsEth: onChain?.totalFundsEth ?? Number(biz.totalFundsEth || 0),
+        };
+      });
     } catch (err) {
       console.error("Contract sync error:", err);
       return bizData.map((biz, index) => ({
         ...biz,
         chainId: index + 1,
+        totalFundsEth: Number(biz.totalFundsEth || 0),
       }));
     }
   };
@@ -184,6 +197,11 @@ function Home() {
   };
 
   const invest = async (businessId) => {
+    if (!user) {
+      alert("Please login first to invest.");
+      return;
+    }
+
     try {
       const contract = await getContract();
       const rewardContract = await getRewardContract();
@@ -199,6 +217,17 @@ function Home() {
       });
 
       await tx.wait();
+
+      setBusinesses((prev) =>
+        prev.map((biz) =>
+          biz.chainId === businessId
+            ? {
+                ...biz,
+                totalFundsEth: Number(biz.totalFundsEth || 0) + 0.01,
+              }
+            : biz
+        )
+      );
 
       const afterBal = await rewardContract.balanceOf(user);
       const rewardDelta = afterBal - beforeBal;
@@ -301,15 +330,18 @@ function Home() {
 
   if (loading) {
     return (
-      <div className="container">
-        <h3>Loading businesses...</h3>
+      <div className="container dashboard-loading">
+        <div className="loading-card">
+          <span className="eyebrow">Preparing dashboard</span>
+          <h3>Loading businesses...</h3>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <Header balance={balance} />
+    <div className="container dashboard-page">
+      <Header balance={balance} user={user} account={account} />
       <AIRecommendationCard
         recommendation={aiRecommendation}
         recommendedBusinessName={recommendedBusinessName}
@@ -319,10 +351,26 @@ function Home() {
         error={aiError}
       />
 
-      {purchaseStatus ? <p style={{ marginTop: "12px" }}>{purchaseStatus}</p> : null}
+      {purchaseStatus ? (
+        <div className="status-banner">{purchaseStatus}</div>
+      ) : null}
+
+      <div className="section-heading" id="businesses">
+        <div>
+          <span className="eyebrow">Marketplace</span>
+          <h2>Fund businesses and buy products</h2>
+        </div>
+        <p>
+          Businesses are synced from Firestore and linked to the current contract state,
+          so you can invest and purchase from one screen.
+        </p>
+      </div>
 
       {businesses.length === 0 ? (
-        <p>No businesses found. Seed your database.</p>
+        <div className="empty-state">
+          <h3>No businesses found</h3>
+          <p>Seed your database to populate the dashboard.</p>
+        </div>
       ) : (
         businesses.map((biz, index) => (
           <BusinessCard
@@ -332,6 +380,7 @@ function Home() {
             onInvest={() => invest(biz.chainId || index + 1)}
             onBuy={handlePurchase}
             isRecommended={isRecommended(biz.name)}
+            canInvest={Boolean(user)}
           />
         ))
       )}

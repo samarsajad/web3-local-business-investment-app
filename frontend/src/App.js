@@ -1,45 +1,53 @@
 import { useState } from "react";
-import Login from "./components/Login";
+import { signOut } from "firebase/auth";
+import { auth } from "./firebase";
 import { connectWallet } from "./utils/wallet";
 import Home from "./pages/home";
+import Navbar from "./components/Layout/Navbar";
+import Footer from "./components/Layout/Footer";
 import "./styles/global.css";
+import "./App.css";
 
 function App() {
   const [user, setUser] = useState(null);
   const [account, setAccount] = useState(null);
 
   const handleConnect = async () => {
+    if (!user) {
+      alert("Please login first to connect your wallet.");
+      return;
+    }
+
     const acc = await connectWallet();
-    setAccount(acc);
+    setAccount(acc || null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setUser(null);
+      setAccount(null);
+    }
   };
 
   return (
-    <div>
-      {!user ? (
-        // 🔐 LOGIN SCREEN
-        <Login setUser={setUser} />
-      ) : (
-        // 🏠 MAIN APP
-        <>
-          <div style={{ padding: "20px" }}>
-            <button
-              onClick={handleConnect}
-              style={{
-                padding: "8px 12px",
-                background: "#6366f1",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                marginBottom: "10px"
-              }}
-            >
-              {account ? "Wallet Connected ✅" : "Connect Wallet"}
-            </button>
-          </div>
+    <div className="app-shell">
+      <Navbar
+        user={user}
+        account={account}
+        setUser={setUser}
+        onConnectWallet={handleConnect}
+        onLogout={handleLogout}
+      />
 
-          <Home user={user} account={account} />
-        </>
-      )}
+      <main className="app-main">
+        <Home user={user} account={account} />
+      </main>
+
+      <Footer />
     </div>
   );
 }

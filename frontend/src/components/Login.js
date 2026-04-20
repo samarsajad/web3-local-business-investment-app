@@ -2,7 +2,7 @@ import { signInWithPopup } from "firebase/auth";
 import { auth, provider, db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 
-function Login({setUser}) {
+function Login({ setUser, className = "" }) {
   const handleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
@@ -14,7 +14,7 @@ function Login({setUser}) {
         email: user.email,
         photo: user.photoURL,
       });
-      setUser(user)
+      setUser(user);
 
       alert("Login successful!");
     } catch (error) {
@@ -24,11 +24,13 @@ function Login({setUser}) {
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "100px" }}>
-      <button onClick={handleLogin}>
-        Login with Google
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`nav-auth-button ${className}`.trim()}
+      onClick={handleLogin}
+    >
+      Login with Google
+    </button>
   );
 }
 
