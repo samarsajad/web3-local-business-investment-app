@@ -130,31 +130,38 @@ const ABI = [{
       "type": "function"
     }];
 
-export const getContract = async () => {
+export const getContract = async (options = {}) => {
+  const {
+    requireSigner = true,
+    requestAccounts = requireSigner,
+    allowNetworkSwitch = requireSigner,
+  } = options;
+
   if (!window.ethereum) {
     throw new Error("MetaMask not installed");
   }
 
   let provider = new ethers.BrowserProvider(window.ethereum);
 
-  // 🔥 STEP 1: Force account selection popup
-  const accounts = await window.ethereum.request({
-    method: "eth_requestAccounts",
-  });
+  let selectedAccount;
+  if (requestAccounts) {
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    selectedAccount = accounts[0];
+  }
 
-  const selectedAccount = accounts[0];
-  console.log("Connected Account:", selectedAccount);
-
-  // 🔍 STEP 2: Get network
   const network = await provider.getNetwork();
-  console.log("CHAIN ID:", network.chainId.toString());
 
-  // 🔥 STEP 3: Ensure correct network
   if (network.chainId !== EXPECTED_CHAIN_ID) {
+    if (!allowNetworkSwitch) {
+      throw new Error("Switch MetaMask to Hardhat Local (31337)");
+    }
+
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: LOCAL_CHAIN_HEX }], // 31337
+        params: [{ chainId: LOCAL_CHAIN_HEX }],
       });
       provider = new ethers.BrowserProvider(window.ethereum);
     } catch (error) {
@@ -162,15 +169,18 @@ export const getContract = async () => {
     }
   }
 
-  // 🔥 STEP 4: Get signer and VERIFY account
-  const signer = await provider.getSigner();
-  const signerAddress = await signer.getAddress();
+  let runner = provider;
+  if (requireSigner) {
+    const signer = await provider.getSigner();
 
-  console.log("Signer Address:", signerAddress);
+    if (selectedAccount) {
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== selectedAccount.toLowerCase()) {
+        throw new Error("Account mismatch. Reconnect MetaMask.");
+      }
+    }
 
-  // ❗ CRITICAL CHECK
-  if (signerAddress.toLowerCase() !== selectedAccount.toLowerCase()) {
-    throw new Error("Account mismatch. Reconnect MetaMask.");
+    runner = signer;
   }
 
   const code = await provider.getCode(CONTRACT_ADDRESS);
@@ -180,7 +190,7 @@ export const getContract = async () => {
     );
   }
 
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, runner);
 
   // Probe a known function so wrong-address issues fail fast with a clear message.
   try {
@@ -191,6 +201,5 @@ export const getContract = async () => {
     );
   }
 
-  // ✅ STEP 5: Return contract
   return contract;
 };

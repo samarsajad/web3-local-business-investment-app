@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { addDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
 import { ethers } from "ethers";
 
 import { db } from "../../../firebase";
@@ -8,7 +8,7 @@ import { getContract } from "../../../utils/contract";
 import { getRewardContract } from "../../../utils/rewardContract";
 import BusinessCard from "../../../components/Business/BusinessCard";
 
-function BusinessDetailsPage({ user }) {
+function BusinessDetailsPage({ user, account }) {
   const { id } = useParams();
   const decodedId = decodeURIComponent(id || "");
 
@@ -64,7 +64,11 @@ function BusinessDetailsPage({ user }) {
     }
 
     try {
-      const contract = await getContract();
+      const contract = await getContract({
+        requireSigner: false,
+        requestAccounts: false,
+        allowNetworkSwitch: false,
+      });
       const count = Number(await contract.businessCount());
 
       if (count === 0) {
@@ -92,10 +96,13 @@ function BusinessDetailsPage({ user }) {
 
       return bizData.map((biz, index) => {
         const onChain = onChainByName.get((biz.name || "").trim().toLowerCase());
+        const firestoreGoalRs = Number(biz.fundingGoal || 1000);
         return {
           ...biz,
           chainId: onChain?.id ?? index + 1,
-          fundingGoal: onChain?.fundingGoal ?? Number(biz.fundingGoal || 1000),
+          fundingGoal: firestoreGoalRs,
+          fundingGoalRs: firestoreGoalRs,
+          onChainFundingGoal: onChain?.fundingGoal ?? null,
           totalFundsEth: onChain?.totalFundsEth ?? Number(biz.totalFundsEth || 0),
         };
       });
@@ -120,19 +127,43 @@ function BusinessDetailsPage({ user }) {
       return;
     }
 
+    if (!account) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
     try {
-      const contract = await getContract();
-      const rewardContract = await getRewardContract();
+      const contract = await getContract({
+        requireSigner: true,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
+      const rewardContract = await getRewardContract({
+        requireSigner: false,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const userAddress = await signer.getAddress();
-
-      const beforeBal = await rewardContract.balanceOf(userAddress);
+      const beforeBal = await rewardContract.balanceOf(account);
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
       });
       await tx.wait();
+
+      if (user?.uid) {
+        const investedBusiness = businesses.find((biz) => biz.chainId === businessId);
+
+        await addDoc(collection(db, "users", user.uid, "investments"), {
+          userId: user.uid,
+          walletAddress: account,
+          businessId,
+          businessDocId: investedBusiness?.docId || null,
+          businessName: investedBusiness?.name || "Unknown business",
+          amountEth: "0.01",
+          txHash: tx.hash,
+          createdAt: serverTimestamp(),
+        });
+      }
 
       setBusinesses((prev) =>
         prev.map((biz) =>
@@ -145,7 +176,7 @@ function BusinessDetailsPage({ user }) {
         )
       );
 
-      const afterBal = await rewardContract.balanceOf(userAddress);
+      const afterBal = await rewardContract.balanceOf(account);
       const rewardDelta = afterBal - beforeBal;
 
       if (rewardDelta > 0n) {
@@ -162,12 +193,26 @@ function BusinessDetailsPage({ user }) {
   };
 
   const handlePurchase = async (businessId, product) => {
+    if (!user) {
+      alert("Please login first to purchase.");
+      return;
+    }
+
+    if (!account) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
     try {
       setPurchaseStatus(`Preparing purchase for ${product.name}...`);
-      const reward = await getRewardContract();
+      const reward = await getRewardContract({
+        requireSigner: true,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const signer = await provider.getSigner(account);
       const userAddress = await signer.getAddress();
 
       const bal = await reward.balanceOf(userAddress);
@@ -281,7 +326,7 @@ function BusinessDetailsPage({ user }) {
         }
         onInvest={() => invest(selectedBusiness.chainId || 1)}
         onBuy={handlePurchase}
-        canInvest={Boolean(user)}
+        canInvest={Boolean(user && account)}
         showProducts
       />
     </div>

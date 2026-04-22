@@ -51,7 +51,7 @@ function App() {
             <Route path="/" element={<Home user={user} account={account} />} />
             <Route
               path="/business/:id"
-              element={<BusinessDetailsPage user={user} />}
+              element={<BusinessDetailsPage user={user} account={account} />}
             />
           </Routes>
         </main>

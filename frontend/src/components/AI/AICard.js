@@ -5,12 +5,7 @@ function AICard({
   loading,
   error,
   recommendedBusinessName,
-  modelInfo,
-  topBreakdown,
 }) {
-  void modelInfo;
-  void topBreakdown;
-
   return (
     <section className="ai-card">
       <div className="ai-card__head">

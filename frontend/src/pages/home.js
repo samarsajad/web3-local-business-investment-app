@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
 import { ethers } from "ethers";
 
 import Header from "../components/Layout/header";
@@ -10,8 +17,11 @@ import { getContract } from "../utils/contract";
 import { getRewardContract } from "../utils/rewardContract";
 
 import AIRecommendationCard from "../components/AI/AICard";
+import InvestmentInsights from "../components/AI/InvestmentInsights";
+
 
 function Home({ user, account }) {
+  const minPersonalizedInvestments = 1;
   const [businesses, setBusinesses] = useState([]);
   const [products, setProducts] = useState({});
   const [balance, setBalance] = useState("0");
@@ -20,21 +30,47 @@ function Home({ user, account }) {
 
   const [aiRecommendation, setAiRecommendation] = useState("");
   const [recommendedBusinessName, setRecommendedBusinessName] = useState("");
-  const [aiModelInfo, setAiModelInfo] = useState(null);
-  const [aiTopBreakdown, setAiTopBreakdown] = useState(null);
+  const [nextRecommendation, setNextRecommendation] = useState("");
+  const [nextRecommendedBusinessName, setNextRecommendedBusinessName] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [nextLoading, setNextLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [nextError, setNextError] = useState("");
+
+  const [userInvestments, setUserInvestments] = useState([]);
 
   useEffect(() => {
     fetchData();
-    loadBalance();
   }, []);
+
+  useEffect(() => {
+    loadBalance();
+  }, [account]);
 
   useEffect(() => {
     if (businesses.length > 0) {
       fetchAIRecommendation();
     }
   }, [businesses, products]);
+
+  useEffect(() => {
+    loadUserInvestments();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (
+      !user?.uid ||
+      businesses.length === 0 ||
+      userInvestments.length < minPersonalizedInvestments
+    ) {
+      setNextRecommendation("");
+      setNextRecommendedBusinessName("");
+      setNextError("");
+      return;
+    }
+
+    fetchPersonalizedRecommendation();
+  }, [user?.uid, businesses, products, userInvestments]);
 
   const fetchData = async () => {
     try {
@@ -72,6 +108,29 @@ function Home({ user, account }) {
     }
   };
 
+  const loadUserInvestments = async () => {
+    if (!user?.uid) {
+      setUserInvestments([]);
+      return;
+    }
+
+    try {
+      const investmentsRef = collection(db, "users", user.uid, "investments");
+      const investmentsQuery = query(investmentsRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(investmentsQuery);
+
+      const records = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setUserInvestments(records);
+    } catch (err) {
+      console.error("Failed to load user investments:", err);
+      setUserInvestments([]);
+    }
+  };
+
   const syncBusinessesToContract = async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {
       return bizData.map((biz, index) => ({
@@ -82,20 +141,18 @@ function Home({ user, account }) {
     }
 
     try {
-      const contract = await getContract();
+      const contract = await getContract({
+        requireSigner: false,
+        requestAccounts: false,
+        allowNetworkSwitch: false,
+      });
       const count = Number(await contract.businessCount());
 
       if (count === 0) {
-        for (const biz of bizData) {
-          const fundingGoal = Number(biz.fundingGoal || 1000);
-          const tx = await contract.createBusiness(biz.name, fundingGoal);
-          await tx.wait();
-        }
-
         return bizData.map((biz, index) => ({
           ...biz,
           chainId: index + 1,
-          totalFundsEth: 0,
+          totalFundsEth: Number(biz.totalFundsEth || 0),
         }));
       }
 
@@ -119,11 +176,14 @@ function Home({ user, account }) {
 
       return bizData.map((biz, index) => {
         const onChain = onChainByName.get((biz.name || "").trim().toLowerCase());
+        const firestoreGoalRs = Number(biz.fundingGoal || 1000);
 
         return {
           ...biz,
           chainId: onChain?.id ?? index + 1,
-          fundingGoal: onChain?.fundingGoal ?? Number(biz.fundingGoal || 1000),
+          fundingGoal: firestoreGoalRs,
+          fundingGoalRs: firestoreGoalRs,
+          onChainFundingGoal: onChain?.fundingGoal ?? null,
           totalFundsEth: onChain?.totalFundsEth ?? Number(biz.totalFundsEth || 0),
         };
       });
@@ -139,17 +199,22 @@ function Home({ user, account }) {
 
   const loadBalance = async () => {
     try {
-      if (!window.ethereum) return;
+      if (!window.ethereum || !account) {
+        setBalance("0");
+        return;
+      }
 
-      const contract = await getRewardContract();
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const user = await signer.getAddress();
+      const contract = await getRewardContract({
+        requireSigner: false,
+        requestAccounts: false,
+        allowNetworkSwitch: false,
+      });
 
-      const bal = await contract.balanceOf(user);
+      const bal = await contract.balanceOf(account);
       setBalance(ethers.formatUnits(bal, 18));
     } catch (err) {
       console.error("Balance error:", err);
+      setBalance("0");
     }
   };
 
@@ -177,17 +242,53 @@ function Home({ user, account }) {
       const data = await res.json();
       setAiRecommendation(data?.recommendation || "No AI recommendation returned.");
       setRecommendedBusinessName(data?.recommendedBusiness?.name || "");
-      setAiModelInfo(data?.model || null);
-      setAiTopBreakdown(data?.recommendedBusiness?.breakdown || null);
     } catch (err) {
       console.error("AI error:", err);
       setAiRecommendation("");
       setRecommendedBusinessName("");
-      setAiModelInfo(null);
-      setAiTopBreakdown(null);
       setAiError(err?.message || "Unable to fetch AI recommendation");
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const fetchPersonalizedRecommendation = async () => {
+    setNextLoading(true);
+    setNextError("");
+
+    try {
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+
+      const res = await fetch(`${backendUrl}/api/ai/personalized`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userInvestments,
+          businesses,
+          productsByBusiness: products,
+        }),
+      });
+
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => ({}));
+        throw new Error(
+          errPayload?.details || errPayload?.error || "Failed to fetch personalized AI"
+        );
+      }
+
+      const data = await res.json();
+      setNextRecommendation(data?.recommendation || "No personalized recommendation yet.");
+      setNextRecommendedBusinessName(data?.recommendedBusiness?.name || "");
+    } catch (err) {
+      console.error("Personalized AI error:", err);
+      setNextRecommendation("");
+      setNextRecommendedBusinessName("");
+      setNextError(err?.message || "Unable to fetch next investment recommendation");
+    } finally {
+      setNextLoading(false);
     }
   };
 
@@ -202,21 +303,46 @@ function Home({ user, account }) {
       return;
     }
 
+    if (!account) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
     try {
-      const contract = await getContract();
-      const rewardContract = await getRewardContract();
+      const contract = await getContract({
+        requireSigner: true,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
+      const rewardContract = await getRewardContract({
+        requireSigner: false,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const user = await signer.getAddress();
-
-      const beforeBal = await rewardContract.balanceOf(user);
+      const beforeBal = await rewardContract.balanceOf(account);
 
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
       });
 
       await tx.wait();
+
+      const selectedBusiness = businesses.find((biz) => biz.chainId === businessId);
+      if (user?.uid) {
+        await addDoc(collection(db, "users", user.uid, "investments"), {
+          userId: user.uid,
+          walletAddress: account,
+          businessId,
+          businessDocId: selectedBusiness?.docId || null,
+          businessName: selectedBusiness?.name || "Unknown business",
+          amountEth: "0.01",
+          txHash: tx.hash,
+          createdAt: serverTimestamp(),
+        });
+
+        await loadUserInvestments();
+      }
 
       setBusinesses((prev) =>
         prev.map((biz) =>
@@ -229,7 +355,7 @@ function Home({ user, account }) {
         )
       );
 
-      const afterBal = await rewardContract.balanceOf(user);
+      const afterBal = await rewardContract.balanceOf(account);
       const rewardDelta = afterBal - beforeBal;
 
       setBalance(ethers.formatUnits(afterBal, 18));
@@ -253,12 +379,26 @@ function Home({ user, account }) {
   };
 
   const handlePurchase = async (businessId, product) => {
+    if (!user) {
+      alert("Please login first to purchase.");
+      return;
+    }
+
+    if (!account) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
     try {
       setPurchaseStatus(`Preparing purchase for ${product.name}...`);
-      const reward = await getRewardContract();
+      const reward = await getRewardContract({
+        requireSigner: true,
+        requestAccounts: false,
+        allowNetworkSwitch: true,
+      });
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const signer = await provider.getSigner(account);
       const user = await signer.getAddress();
 
       const bal = await reward.balanceOf(user);
@@ -345,10 +485,19 @@ function Home({ user, account }) {
       <AIRecommendationCard
         recommendation={aiRecommendation}
         recommendedBusinessName={recommendedBusinessName}
-        modelInfo={aiModelInfo}
-        topBreakdown={aiTopBreakdown}
         loading={aiLoading}
         error={aiError}
+      />
+
+      <InvestmentInsights
+        loading={nextLoading}
+        error={nextError}
+        investmentCount={userInvestments.length}
+        lastInvestedBusinessName={userInvestments[0]?.businessName || ""}
+        nextRecommendedBusinessName={nextRecommendedBusinessName}
+        nextRecommendation={nextRecommendation}
+        trendingBusinessName={recommendedBusinessName}
+        trendingText={aiRecommendation}
       />
 
       {purchaseStatus ? (
@@ -381,7 +530,7 @@ function Home({ user, account }) {
               onInvest={() => invest(biz.chainId || index + 1)}
               onBuy={handlePurchase}
               isRecommended={isRecommended(biz.name)}
-              canInvest={Boolean(user)}
+              canInvest={Boolean(user && account)}
               showProducts={false}
             />
           ))}

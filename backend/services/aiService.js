@@ -9,6 +9,12 @@ const SCORE_WEIGHTS = {
   traction: 0.05,
 };
 
+const PERSONALIZED_WEIGHTS = {
+  baseQuality: 0.6,
+  preferenceAffinity: 0.25,
+  diversificationBoost: 0.15,
+};
+
 const FIELD_ALIASES = {
   demandScore: ["demandScore", "marketDemand", "demand", "customerDemand"],
   customerRating: ["rating", "customerRating", "reviewRating"],
@@ -264,19 +270,41 @@ async function generateLLMExplanation(topBusiness, rankedBusinesses) {
   }
 
   const prompt = `
-You are a product recommender for a consumer app.
-Use the weighted model scores exactly as factual inputs.
+You are a sharp, practical investment analyst evaluating local businesses for retail investors.
+
+IMPORTANT RULES:
+- Do NOT mention scores, weights, models, or technical calculations.
+- Use natural business language (like an investor memo).
+- Be persuasive but honest.
+- Highlight BOTH strengths and risks.
+- Do NOT invent numbers.
+
+DATA:
 
 Top business:
 ${JSON.stringify(topBusiness, null, 2)}
 
-Top 3 ranked businesses:
+Top 3 businesses:
 ${JSON.stringify(rankedBusinesses.slice(0, 3), null, 2)}
 
-Write exactly 1 short sentence (max 20 words).
-Format: "Best pick: <name> — <reason based on top 1-2 scoring factors>."
-Do not mention scores, weights, model names, cautions, or risk warnings.
-Do not invent numbers.
+TASK:
+
+Write a short investment analysis (50 words) for the top business.
+
+Structure:
+1. Start with a clear recommendation (why this business stands out)
+2. Explain key strengths using real business signals:
+   - demand / customers
+   - revenue / margins
+   - growth / repeat customers
+   - operational stability
+3. Briefly compare it with others (optional but useful)
+4. Mention 1–2 realistic risks (important)
+
+Tone:
+Confident, grounded, and practical — like explaining to a smart investor friend.
+
+Avoid fluff. Focus on reasoning.
 `;
 
   let lastError = null;
@@ -328,4 +356,274 @@ async function getRecommendation(businesses, productsByBusiness = {}) {
   };
 }
 
-module.exports = { getRecommendation };
+function normalizeCategoryValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function inferCategories(business) {
+  const categoryFields = [business?.category, business?.industry, business?.sector]
+    .filter(Boolean)
+    .map(normalizeCategoryValue)
+    .filter(Boolean);
+
+  const tags = Array.isArray(business?.tags)
+    ? business.tags.map(normalizeCategoryValue).filter(Boolean)
+    : [];
+
+  const description = String(business?.description || "").toLowerCase();
+  const keywordBuckets = [
+    {
+      tag: "food",
+      keywords: ["cafe", "bakery", "food", "restaurant", "snack", "meal"],
+    },
+    {
+      tag: "retail",
+      keywords: ["shop", "store", "retail", "fashion", "clothing", "boutique"],
+    },
+    {
+      tag: "services",
+      keywords: ["service", "repair", "salon", "consult", "agency"],
+    },
+    {
+      tag: "health",
+      keywords: ["health", "fitness", "wellness", "gym", "care"],
+    },
+    {
+      tag: "education",
+      keywords: ["learning", "education", "training", "course", "academy"],
+    },
+  ];
+
+  const inferred = keywordBuckets
+    .filter((bucket) => bucket.keywords.some((word) => description.includes(word)))
+    .map((bucket) => bucket.tag);
+
+  return [...new Set([...categoryFields, ...tags, ...inferred])];
+}
+
+function getBusinessKey(business) {
+  return String(
+    business?.docId ||
+      business?.businessDocId ||
+      business?.id ||
+      business?.businessId ||
+      business?.name ||
+      business?.businessName ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function computeBaseRankings(businesses, productsByBusiness = {}) {
+  return businesses
+    .map((business) => {
+      const relatedProducts =
+        productsByBusiness?.[business.id] || productsByBusiness?.[business.docId] || [];
+      const breakdown = calcScores(business, relatedProducts);
+
+      return {
+        id: business.id,
+        docId: business.docId,
+        name: business.name || "Unnamed Business",
+        score: breakdown.weightedScore,
+        breakdown,
+        categories: inferCategories(business),
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+function buildPreferenceProfile(userInvestments, businesses) {
+  const businessesByKey = new Map(
+    businesses.map((biz) => [getBusinessKey(biz), biz])
+  );
+
+  const categoryWeights = new Map();
+  const businessCounts = new Map();
+
+  userInvestments.forEach((investment) => {
+    const key = getBusinessKey(investment);
+    if (!key) return;
+
+    businessCounts.set(key, (businessCounts.get(key) || 0) + 1);
+
+    const matchedBusiness = businessesByKey.get(key);
+    const fallbackBusinessLike = {
+      category: investment?.businessCategory,
+      tags: investment?.businessTags,
+      description: investment?.businessDescription,
+    };
+
+    const categories = inferCategories(matchedBusiness || fallbackBusinessLike);
+    categories.forEach((category) => {
+      categoryWeights.set(category, (categoryWeights.get(category) || 0) + 1);
+    });
+  });
+
+  return {
+    categoryWeights,
+    businessCounts,
+    totalInvestments: userInvestments.length,
+  };
+}
+
+function computePreferenceAffinity(categories, profile) {
+  if (!categories.length || profile.totalInvestments === 0) {
+    return 50;
+  }
+
+  const totalCategoryWeight = Array.from(profile.categoryWeights.values()).reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  if (totalCategoryWeight === 0) {
+    return 50;
+  }
+
+  const matchedWeight = categories.reduce(
+    (sum, category) => sum + (profile.categoryWeights.get(category) || 0),
+    0
+  );
+
+  return clamp((matchedWeight / totalCategoryWeight) * 100);
+}
+
+function computeDiversificationBoost(businessKey, categories, profile) {
+  const investedInBusinessCount = profile.businessCounts.get(businessKey) || 0;
+  const noveltyBusiness = investedInBusinessCount === 0 ? 100 : clamp(60 - investedInBusinessCount * 15, 10, 60);
+
+  if (!categories.length) {
+    return noveltyBusiness;
+  }
+
+  const seenCategories = categories.filter((category) =>
+    profile.categoryWeights.has(category)
+  ).length;
+  const unseenRatio = 1 - seenCategories / categories.length;
+  const noveltyCategory = clamp(unseenRatio * 100);
+
+  return clamp((noveltyBusiness * 0.7) + (noveltyCategory * 0.3));
+}
+
+function buildPersonalizedFallback(topBusiness, userInvestments) {
+  const priorCount = userInvestments.length;
+  return `Based on your ${priorCount} prior investments, ${topBusiness.name} looks like the strongest next move with a healthy balance of quality and portfolio diversification.`;
+}
+
+async function generatePersonalizedLLMExplanation(
+  topBusiness,
+  rankedBusinesses,
+  userInvestments
+) {
+  if (!genAI) {
+    return buildPersonalizedFallback(topBusiness, userInvestments);
+  }
+
+  const recentHistory = userInvestments.slice(0, 5);
+  const prompt = `
+You are an investment co-pilot helping a user decide the NEXT local business to invest in.
+
+Rules:
+- Keep response under 70 words.
+- Mention why this is a good "next" pick given prior investments.
+- Mention one diversification or risk-management angle.
+- Do not mention hidden scores, weights, or raw model internals.
+
+User recent investments:
+${JSON.stringify(recentHistory, null, 2)}
+
+Top candidates:
+${JSON.stringify(rankedBusinesses.slice(0, 3), null, 2)}
+
+Write one concise recommendation paragraph.
+`;
+
+  let lastError = null;
+
+  for (const modelName of AI_MODEL_CANDIDATES) {
+    try {
+      return await generateWithRetry(modelName, prompt);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  console.warn("AI personalized explanation fallback:", summarizeError(lastError));
+  return buildPersonalizedFallback(topBusiness, userInvestments);
+}
+
+async function getPersonalizedRecommendation(
+  userInvestments,
+  businesses,
+  productsByBusiness = {}
+) {
+  if (!Array.isArray(userInvestments)) {
+    throw new Error("userInvestments must be an array");
+  }
+
+  if (!Array.isArray(businesses) || businesses.length === 0) {
+    throw new Error("No businesses provided for personalized scoring");
+  }
+
+  if (userInvestments.length === 0) {
+    return getRecommendation(businesses, productsByBusiness);
+  }
+
+  const baseRanked = computeBaseRankings(businesses, productsByBusiness);
+  const profile = buildPreferenceProfile(userInvestments, businesses);
+
+  const rankedBusinesses = baseRanked
+    .map((business) => {
+      const businessKey = getBusinessKey(business);
+      const preferenceAffinity = computePreferenceAffinity(
+        business.categories,
+        profile
+      );
+      const diversificationBoost = computeDiversificationBoost(
+        businessKey,
+        business.categories,
+        profile
+      );
+
+      const personalizedScore = clamp(
+        business.score * PERSONALIZED_WEIGHTS.baseQuality +
+          preferenceAffinity * PERSONALIZED_WEIGHTS.preferenceAffinity +
+          diversificationBoost * PERSONALIZED_WEIGHTS.diversificationBoost
+      );
+
+      return {
+        ...business,
+        score: Number(personalizedScore.toFixed(2)),
+        personalization: {
+          preferenceAffinity: Number(preferenceAffinity.toFixed(2)),
+          diversificationBoost: Number(diversificationBoost.toFixed(2)),
+        },
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const recommendedBusiness = rankedBusinesses[0];
+  const explanation = await generatePersonalizedLLMExplanation(
+    recommendedBusiness,
+    rankedBusinesses,
+    userInvestments
+  );
+
+  return {
+    recommendation: explanation,
+    model: {
+      type: "personalized-next-investment-v1",
+      weights: PERSONALIZED_WEIGHTS,
+      basedOnInvestments: userInvestments.length,
+    },
+    recommendedBusiness,
+    rankedBusinesses,
+  };
+}
+
+module.exports = { getRecommendation, getPersonalizedRecommendation };

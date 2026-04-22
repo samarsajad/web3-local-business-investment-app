@@ -24,7 +24,14 @@ async function seed() {
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  const upsertBusiness = async (name, description, fundingGoal, location) => {
+  const upsertBusiness = async (
+    name,
+    description,
+    fundingGoal,
+    location,
+    imageUrl,
+    category
+  ) => {
     const q = query(collection(db, "businesses"), where("name", "==", name));
     const snap = await getDocs(q);
     if (!snap.empty) {
@@ -36,6 +43,8 @@ async function seed() {
           description,
           fundingGoal,
           location,
+          imageUrl,
+          category,
         },
         { merge: true }
       );
@@ -47,11 +56,13 @@ async function seed() {
       description,
       fundingGoal,
       location,
+      imageUrl,
+      category,
     });
     return ref.id;
   };
 
-  const addProductIfMissing = async (name, price, businessId) => {
+  const upsertProduct = async (name, price, businessId, imageUrl) => {
     const q = query(
       collection(db, "products"),
       where("name", "==", name),
@@ -59,6 +70,17 @@ async function seed() {
     );
     const snap = await getDocs(q);
     if (!snap.empty) {
+      const existing = snap.docs[0];
+      await setDoc(
+        doc(db, "products", existing.id),
+        {
+          name,
+          price,
+          businessId,
+          imageUrl,
+        },
+        { merge: true }
+      );
       return;
     }
 
@@ -66,6 +88,7 @@ async function seed() {
       name,
       price,
       businessId,
+      imageUrl,
     });
   };
 
@@ -73,104 +96,135 @@ async function seed() {
   const bakeryId = await upsertBusiness(
     "Local Bakery",
     "Fresh bread & cakes",
-    1000,
-    "MG Road, Bengaluru"
+    100000,
+    "MG Road, Bengaluru",
+    "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80",
+    "food"
   );
 
   const cafeId = await upsertBusiness(
     "Local Cafe",
     "Coffee & snacks",
-    1200,
-    "Koramangala, Bengaluru"
+    120000,
+    "Koramangala, Bengaluru",
+    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+    "food"
   );
 
   // NEW BUSINESSES
   const groceryId = await upsertBusiness(
     "Green Grocery",
     "Fresh fruits and vegetables",
-    1500,
-    "Indiranagar, Bengaluru"
+    150000,
+    "Indiranagar, Bengaluru",
+    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80",
+    "retail"
   );
 
   const bookstoreId = await upsertBusiness(
     "City Bookstore",
     "Books and stationery",
-    800,
-    "Jayanagar, Bengaluru"
+    80000,
+    "Jayanagar, Bengaluru",
+    "https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=1200&q=80",
+    "education"
   );
 
-  const pharmacyId = await upsertBusiness(
-    "Health Pharmacy",
-    "Medicines and health products",
-    2000,
-    "HSR Layout, Bengaluru"
-  );
+ 
 
   const clothingId = await upsertBusiness(
     "Trendy Clothes",
     "Fashion and apparel",
     1800,
-    "Brigade Road, Bengaluru"
-  );
-
-  const electronicsId = await upsertBusiness(
-    "Tech Store",
-    "Electronics and gadgets",
-    3000,
-    "Marathahalli, Bengaluru"
-  );
-
-  const dairyId = await upsertBusiness(
-    "Dairy Farm",
-    "Milk and dairy products",
-    1300,
-    "Rajajinagar, Bengaluru"
+    "Brigade Road, Bengaluru",
+    "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80",
+    "retail"
   );
 
   const restaurantId = await upsertBusiness(
     "Family Restaurant",
     "Home-style meals",
-    2500,
-    "BTM Layout, Bengaluru"
+    250000,
+    "BTM Layout, Bengaluru",
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+    "food"
   );
 
-  const salonId = await upsertBusiness(
-    "Beauty Salon",
-    "Hair and skincare services",
-    900,
-    "Malleshwaram, Bengaluru"
-  );
+  
 
   // PRODUCTS
-  await addProductIfMissing("Chocolate Cake", 200, bakeryId);
-  await addProductIfMissing("Croissant", 80, bakeryId);
-  await addProductIfMissing("Cold Coffee", 120, cafeId);
+  await upsertProduct(
+    "Chocolate Cake",
+    200,
+    bakeryId,
+    "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Croissant",
+    80,
+    bakeryId,
+    "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Cold Coffee",
+    120,
+    cafeId,
+    "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80"
+  );
 
-  await addProductIfMissing("Apples", 100, groceryId);
-  await addProductIfMissing("Bananas", 60, groceryId);
+  await upsertProduct(
+    "Apples",
+    100,
+    groceryId,
+    "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Bananas",
+    60,
+    groceryId,
+    "https://images.unsplash.com/photo-1574226516831-e1dff420e37f?auto=format&fit=crop&w=900&q=80"
+  );
 
-  await addProductIfMissing("Notebook", 50, bookstoreId);
-  await addProductIfMissing("Pen Pack", 30, bookstoreId);
+  await upsertProduct(
+    "Notebook",
+    50,
+    bookstoreId,
+    "https://images.unsplash.com/photo-1531346878377-a5be20888e57?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Pen Pack",
+    30,
+    bookstoreId,
+    "https://images.unsplash.com/photo-1456735190827-d1262f71b8a3?auto=format&fit=crop&w=900&q=80"
+  );
 
-  await addProductIfMissing("Paracetamol", 20, pharmacyId);
-  await addProductIfMissing("Vitamins", 150, pharmacyId);
+  await upsertProduct(
+    "T-Shirt",
+    400,
+    clothingId,
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Jeans",
+    1200,
+    clothingId,
+    "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=900&q=80"
+  );
 
-  await addProductIfMissing("T-Shirt", 400, clothingId);
-  await addProductIfMissing("Jeans", 1200, clothingId);
+  await upsertProduct(
+    "Thali",
+    250,
+    restaurantId,
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80"
+  );
+  await upsertProduct(
+    "Biryani",
+    300,
+    restaurantId,
+    "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80"
+  );
 
-  await addProductIfMissing("Headphones", 1500, electronicsId);
-  await addProductIfMissing("Mobile Charger", 300, electronicsId);
-
-  await addProductIfMissing("Milk", 60, dairyId);
-  await addProductIfMissing("Paneer", 200, dairyId);
-
-  await addProductIfMissing("Thali", 250, restaurantId);
-  await addProductIfMissing("Biryani", 300, restaurantId);
-
-  await addProductIfMissing("Haircut", 200, salonId);
-  await addProductIfMissing("Facial", 800, salonId);
-
-  console.log("Seed complete: businesses/products are ready.");
+  console.log("Seed complete");
 } catch (error) {
   console.error("Seed failed:", error);
   process.exitCode = 1;
