@@ -29,6 +29,39 @@
   flex: 1;
 }
 
+.reveal-on-scroll {
+  --reveal-offset: 22px;
+  --reveal-duration: 680ms;
+  --reveal-easing: cubic-bezier(0.19, 1, 0.22, 1);
+  --reveal-delay: 0ms;
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-offset), 0) scale(0.985);
+  filter: blur(6px);
+  transition:
+    opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+    transform var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+    filter var(--reveal-duration) ease var(--reveal-delay);
+  will-change: transform, opacity, filter;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+.reveal-lift {
+  --reveal-offset: 26px;
+}
+
+.reveal-delay-1 {
+  --reveal-delay: 90ms;
+}
+
+.reveal-delay-2 {
+  --reveal-delay: 170ms;
+}
+
 .container-wide {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -518,7 +551,6 @@
   background: var(--surface);
   box-shadow: var(--shadow-soft);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  animation: rise-in 360ms ease;
 }
 
 .business-card__content {
@@ -911,5 +943,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
   }
 }

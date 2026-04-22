@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import {
   addDoc,
@@ -71,6 +71,48 @@ function Home({ user, account }) {
 
     fetchPersonalizedRecommendation();
   }, [user?.uid, businesses, products, userInvestments]);
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll(".reveal-on-scroll"));
+    if (nodes.length === 0) {
+      return undefined;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      nodes.forEach((node) => node.classList.add("is-visible"));
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.14,
+        rootMargin: "0px 0px -10% 0px",
+      }
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    loading,
+    businesses.length,
+    userInvestments.length,
+    aiRecommendation,
+    nextRecommendation,
+    purchaseStatus,
+  ]);
 
   const fetchData = async () => {
     try {
@@ -297,6 +339,20 @@ function Home({ user, account }) {
     return recommendedBusinessName.toLowerCase() === (bizName || "").toLowerCase();
   };
 
+  const displayedBusinesses = useMemo(() => {
+    if (!recommendedBusinessName) {
+      return businesses;
+    }
+
+    const normalizedRecommended = recommendedBusinessName.toLowerCase();
+
+    return [...businesses].sort((a, b) => {
+      const aPriority = (a?.name || "").toLowerCase() === normalizedRecommended ? 0 : 1;
+      const bPriority = (b?.name || "").toLowerCase() === normalizedRecommended ? 0 : 1;
+      return aPriority - bPriority;
+    });
+  }, [businesses, recommendedBusinessName]);
+
   const invest = async (businessId) => {
     if (!user) {
       alert("Please login first to invest.");
@@ -468,43 +524,37 @@ function Home({ user, account }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container dashboard-loading">
-        <div className="loading-card">
-          <span className="eyebrow">Preparing dashboard</span>
-          <h3>Loading businesses...</h3>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container dashboard-page">
       <Header balance={balance} user={user} account={account} />
-      <AIRecommendationCard
-        recommendation={aiRecommendation}
-        recommendedBusinessName={recommendedBusinessName}
-        loading={aiLoading}
-        error={aiError}
-      />
+      <div className="reveal-on-scroll reveal-lift">
+        <AIRecommendationCard
+          recommendation={aiRecommendation}
+          recommendedBusinessName={recommendedBusinessName}
+          loading={aiLoading}
+          error={aiError}
+        />
+      </div>
 
-      <InvestmentInsights
-        loading={nextLoading}
-        error={nextError}
-        investmentCount={userInvestments.length}
-        lastInvestedBusinessName={userInvestments[0]?.businessName || ""}
-        nextRecommendedBusinessName={nextRecommendedBusinessName}
-        nextRecommendation={nextRecommendation}
-        trendingBusinessName={recommendedBusinessName}
-        trendingText={aiRecommendation}
-      />
+      <div className="reveal-on-scroll reveal-lift reveal-delay-1">
+        <InvestmentInsights
+          loading={nextLoading}
+          error={nextError}
+          investmentCount={userInvestments.length}
+          lastInvestedBusinessName={userInvestments[0]?.businessName || ""}
+          nextRecommendedBusinessName={nextRecommendedBusinessName}
+          nextRecommendation={nextRecommendation}
+          trendingBusinessName={recommendedBusinessName}
+          trendingText={aiRecommendation}
+        />
+      </div>
 
       {purchaseStatus ? (
-        <div className="status-banner">{purchaseStatus}</div>
+        <div className="status-banner reveal-on-scroll reveal-lift reveal-delay-1">{purchaseStatus}</div>
       ) : null}
 
-      <div className="section-heading" id="businesses">
+      <div className="section-heading reveal-on-scroll reveal-lift reveal-delay-2" id="businesses">
         <div>
           <span className="eyebrow">Marketplace</span>
           <h2>Explore local businesses</h2>
@@ -515,27 +565,32 @@ function Home({ user, account }) {
         </p>
       </div>
 
-      {businesses.length === 0 ? (
-        <div className="empty-state">
+      {/* {businesses.length === 0 ? (
+        <div className="empty-state reveal-on-scroll reveal-lift reveal-delay-2">
           <h3>No businesses found</h3>
           <p>Seed your database to populate the dashboard.</p>
         </div>
-      ) : (
+      ) : ( */}
         <div className="businesses-grid">
-          {businesses.map((biz, index) => (
-            <BusinessCard
+          {displayedBusinesses.map((biz, index) => (
+            <div
               key={biz.docId || biz.id || index}
-              business={biz}
-              products={products[biz.id] || products[biz.docId] || []}
-              onInvest={() => invest(biz.chainId || index + 1)}
-              onBuy={handlePurchase}
-              isRecommended={isRecommended(biz.name)}
-              canInvest={Boolean(user && account)}
-              showProducts={false}
-            />
+              className="reveal-on-scroll reveal-lift"
+              style={{ "--reveal-delay": `${Math.min(index * 90, 540)}ms` }}
+            >
+              <BusinessCard
+                business={biz}
+                products={products[biz.id] || products[biz.docId] || []}
+                onInvest={() => invest(biz.chainId || index + 1)}
+                onBuy={handlePurchase}
+                isRecommended={isRecommended(biz.name)}
+                canInvest={Boolean(user && account)}
+                showProducts={false}
+              />
+            </div>
           ))}
         </div>
-      )}
+      
     </div>
   );
 }

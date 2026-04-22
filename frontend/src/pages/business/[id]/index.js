@@ -273,15 +273,6 @@ function BusinessDetailsPage({ user, account }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container dashboard-loading">
-        <div className="loading-card">
-          <h3>Loading business...</h3>
-        </div>
-      </div>
-    );
-  }
 
   if (!selectedBusiness) {
     return (
