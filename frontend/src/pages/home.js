@@ -633,8 +633,8 @@ if (bal >= cost) {
           <h2>Explore local businesses</h2>
         </div>
         <p>
-          Start by picking a business. Each business has its own page where you can
-          view products and make purchases.
+          Your Neighborhood, FundedBrowse local businesses, back the ones you
+          believe in, and earn rewards when you shop.
         </p>
       </div>
 
