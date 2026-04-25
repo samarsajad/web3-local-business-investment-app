@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { addDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
 import { ethers } from "ethers";
@@ -14,14 +14,9 @@ function BusinessDetailsPage({ user, account }) {
 
   const [businesses, setBusinesses] = useState([]);
   const [productsByBusiness, setProductsByBusiness] = useState({});
-  const [loading, setLoading] = useState(true);
   const [purchaseStatus, setPurchaseStatus] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const bizSnap = await getDocs(collection(db, "businesses"));
       const prodSnap = await getDocs(collection(db, "products"));
@@ -49,10 +44,12 @@ function BusinessDetailsPage({ user, account }) {
       setProductsByBusiness(grouped);
     } catch (err) {
       console.error("Business page load error:", err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const syncBusinessesToContract = async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {

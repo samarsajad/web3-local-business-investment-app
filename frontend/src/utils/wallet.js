@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-
 export const connectWallet = async () => {
   if (!window.ethereum) {
     alert("Install MetaMask");

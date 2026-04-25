@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import {
   addDoc,
@@ -39,141 +39,7 @@ function Home({ user, account }) {
 
   const [userInvestments, setUserInvestments] = useState([]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    loadBalance();
-  }, [account]);
-
-  useEffect(() => {
-    if (businesses.length > 0) {
-      fetchAIRecommendation();
-    }
-  }, [businesses, products]);
-
-  useEffect(() => {
-    loadUserInvestments();
-  }, [user?.uid]);
-
-  useEffect(() => {
-    if (
-      !user?.uid ||
-      businesses.length === 0 ||
-      userInvestments.length < minPersonalizedInvestments
-    ) {
-      setNextRecommendation("");
-      setNextRecommendedBusinessName("");
-      setNextError("");
-      return;
-    }
-
-    fetchPersonalizedRecommendation();
-  }, [user?.uid, businesses, products, userInvestments]);
-
-  useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll(".reveal-on-scroll"));
-    if (nodes.length === 0) {
-      return undefined;
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      nodes.forEach((node) => node.classList.add("is-visible"));
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        });
-      },
-      {
-        threshold: 0.14,
-        rootMargin: "0px 0px -10% 0px",
-      }
-    );
-
-    nodes.forEach((node) => observer.observe(node));
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [
-    loading,
-    businesses.length,
-    userInvestments.length,
-    aiRecommendation,
-    nextRecommendation,
-    purchaseStatus,
-  ]);
-
-  const fetchData = async () => {
-    try {
-      const bizSnap = await getDocs(collection(db, "businesses"));
-      const prodSnap = await getDocs(collection(db, "products"));
-
-      const bizData = bizSnap.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          ...data,
-          docId: doc.id,
-          id: data.id ?? doc.id,
-        };
-      });
-
-      const grouped = {};
-
-      prodSnap.docs.forEach((doc) => {
-        const data = doc.data();
-
-        if (!grouped[data.businessId]) {
-          grouped[data.businessId] = [];
-        }
-
-        grouped[data.businessId].push(data);
-      });
-
-      const syncedBusinesses = await syncBusinessesToContract(bizData);
-      setBusinesses(syncedBusinesses);
-      setProducts(grouped);
-    } catch (err) {
-      console.error("Firestore error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadUserInvestments = async () => {
-    if (!user?.uid) {
-      setUserInvestments([]);
-      return;
-    }
-
-    try {
-      const investmentsRef = collection(db, "users", user.uid, "investments");
-      const investmentsQuery = query(investmentsRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(investmentsQuery);
-
-      const records = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setUserInvestments(records);
-    } catch (err) {
-      console.error("Failed to load user investments:", err);
-      setUserInvestments([]);
-    }
-  };
-
-  const syncBusinessesToContract = async (bizData) => {
+  const syncBusinessesToContract = useCallback(async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {
       return bizData.map((biz, index) => ({
         ...biz,
@@ -237,9 +103,68 @@ function Home({ user, account }) {
         totalFundsEth: Number(biz.totalFundsEth || 0),
       }));
     }
-  };
+  }, []);
 
-  const loadBalance = async () => {
+  const fetchData = useCallback(async () => {
+    try {
+      const bizSnap = await getDocs(collection(db, "businesses"));
+      const prodSnap = await getDocs(collection(db, "products"));
+
+      const bizData = bizSnap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          ...data,
+          docId: doc.id,
+          id: data.id ?? doc.id,
+        };
+      });
+
+      const grouped = {};
+
+      prodSnap.docs.forEach((doc) => {
+        const data = doc.data();
+
+        if (!grouped[data.businessId]) {
+          grouped[data.businessId] = [];
+        }
+
+        grouped[data.businessId].push(data);
+      });
+
+      const syncedBusinesses = await syncBusinessesToContract(bizData);
+      setBusinesses(syncedBusinesses);
+      setProducts(grouped);
+    } catch (err) {
+      console.error("Firestore error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [syncBusinessesToContract]);
+
+  const loadUserInvestments = useCallback(async () => {
+    if (!user?.uid) {
+      setUserInvestments([]);
+      return;
+    }
+
+    try {
+      const investmentsRef = collection(db, "users", user.uid, "investments");
+      const investmentsQuery = query(investmentsRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(investmentsQuery);
+
+      const records = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setUserInvestments(records);
+    } catch (err) {
+      console.error("Failed to load user investments:", err);
+      setUserInvestments([]);
+    }
+  }, [user?.uid]);
+
+  const loadBalance = useCallback(async () => {
     try {
       if (!window.ethereum || !account) {
         setBalance("0");
@@ -258,9 +183,9 @@ function Home({ user, account }) {
       console.error("Balance error:", err);
       setBalance("0");
     }
-  };
+  }, [account]);
 
-  const fetchAIRecommendation = async () => {
+  const fetchAIRecommendation = useCallback(async () => {
     setAiLoading(true);
     setAiError("");
 
@@ -292,9 +217,9 @@ function Home({ user, account }) {
     } finally {
       setAiLoading(false);
     }
-  };
+  }, [businesses, products]);
 
-  const fetchPersonalizedRecommendation = async () => {
+  const fetchPersonalizedRecommendation = useCallback(async () => {
     setNextLoading(true);
     setNextError("");
 
@@ -332,7 +257,82 @@ function Home({ user, account }) {
     } finally {
       setNextLoading(false);
     }
-  };
+  }, [businesses, products, userInvestments]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    loadBalance();
+  }, [loadBalance]);
+
+  useEffect(() => {
+    if (businesses.length > 0) {
+      fetchAIRecommendation();
+    }
+  }, [businesses, products, fetchAIRecommendation]);
+
+  useEffect(() => {
+    loadUserInvestments();
+  }, [loadUserInvestments]);
+
+  useEffect(() => {
+    if (
+      !user?.uid ||
+      businesses.length === 0 ||
+      userInvestments.length < minPersonalizedInvestments
+    ) {
+      setNextRecommendation("");
+      setNextRecommendedBusinessName("");
+      setNextError("");
+      return;
+    }
+
+    fetchPersonalizedRecommendation();
+  }, [user?.uid, businesses, products, userInvestments, fetchPersonalizedRecommendation]);
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll(".reveal-on-scroll"));
+    if (nodes.length === 0) {
+      return undefined;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      nodes.forEach((node) => node.classList.add("is-visible"));
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.14,
+        rootMargin: "0px 0px -10% 0px",
+      }
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    loading,
+    businesses.length,
+    userInvestments.length,
+    aiRecommendation,
+    nextRecommendation,
+    purchaseStatus,
+  ]);
 
   const isRecommended = (bizName) => {
     if (!recommendedBusinessName) return false;
