@@ -118,7 +118,7 @@ function BusinessDetailsPage({ user, account }) {
     [businesses, decodedId]
   );
 
-  const invest = async (businessId) => {
+  const invest = async (business) => {
     if (!user) {
       alert("Please login first to invest.");
       return;
@@ -129,17 +129,46 @@ function BusinessDetailsPage({ user, account }) {
       return;
     }
 
-    if (!Number.isInteger(businessId) || businessId <= 0) {
-      alert("This business is not created on-chain yet. Please create/sync it first.");
-      return;
-    }
-
     try {
       const contract = await getContract({
         requireSigner: true,
         requestAccounts: false,
         allowNetworkSwitch: true,
       });
+
+      let businessId = business?.chainId;
+      if (!Number.isInteger(businessId) || businessId <= 0) {
+        const goal = Number(business?.fundingGoalRs ?? business?.fundingGoal ?? 1000);
+        const createTx = await contract.createBusiness(
+          business?.name || "Local Business",
+          goal
+        );
+        const receipt = await createTx.wait();
+
+        let createdBusinessId = null;
+        for (const log of receipt.logs || []) {
+          try {
+            const parsed = contract.interface.parseLog(log);
+            if (parsed?.name === "BusinessCreated") {
+              createdBusinessId = Number(parsed.args.businessId);
+              break;
+            }
+          } catch (_) {
+            // Ignore logs that are not from Investment.
+          }
+        }
+
+        businessId = createdBusinessId || Number(await contract.businessCount());
+
+        setBusinesses((prev) =>
+          prev.map((biz) =>
+            String(biz.docId || biz.id) === String(business?.docId || business?.id)
+              ? { ...biz, chainId: businessId }
+              : biz
+          )
+        );
+      }
+
       const rewardContract = await getRewardContract({
         requireSigner: false,
         requestAccounts: false,
@@ -317,9 +346,9 @@ function BusinessDetailsPage({ user, account }) {
           productsByBusiness[selectedBusiness.docId] ||
           []
         }
-        onInvest={() => invest(selectedBusiness.chainId)}
+        onInvest={() => invest(selectedBusiness)}
         onBuy={handlePurchase}
-        canInvest={Boolean(user && account && Number.isInteger(selectedBusiness.chainId))}
+        canInvest={Boolean(user && account)}
         showProducts
       />
     </div>
