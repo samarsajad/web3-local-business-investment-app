@@ -243,32 +243,38 @@ function BusinessDetailsPage({ user, account }) {
       });
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner(account);
-      const userAddress = await signer.getAddress();
+const signer = await provider.getSigner(account);
+const userAddress = await signer.getAddress();
 
-      const bal = await reward.balanceOf(userAddress);
-      const cost = ethers.parseUnits("5", 18);
+const feeData = await provider.getFeeData();
+const gasOverrides = {
+  gasLimit: 150000n,
+  maxFeePerGas: feeData.maxFeePerGas ?? feeData.gasPrice ?? ethers.parseUnits("20", "gwei"),
+  maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? ethers.parseUnits("1", "gwei"),
+};
 
-      let finalPrice = product.price;
-      if (bal >= cost) {
-        try {
-          const burnTx = await reward.burnTokens(cost);
-          await burnTx.wait();
-          finalPrice = Math.floor(product.price * 0.9);
-          alert("Discount applied using tokens!");
-        } catch (burnError) {
-          const burnMessage =
-            burnError?.reason || burnError?.shortMessage || burnError?.message || "";
-          if (/insufficient funds/i.test(String(burnMessage))) {
-            alert("Not enough network ETH for gas. Continuing without token discount.");
-          } else {
-            throw burnError;
-          }
-        }
-      } else {
-        alert("Not enough tokens, paying full price.");
-      }
+const bal = await reward.balanceOf(userAddress);
+const cost = ethers.parseUnits("5", 18);
 
+let finalPrice = product.price;
+if (bal >= cost) {
+  try {
+    const burnTx = await reward.burnTokens(cost, gasOverrides);
+    await burnTx.wait();
+    finalPrice = Math.floor(product.price * 0.9);
+    alert("Discount applied using tokens!");
+  } catch (burnError) {
+    const burnMessage =
+      burnError?.reason || burnError?.shortMessage || burnError?.message || "";
+    if (/insufficient funds/i.test(String(burnMessage))) {
+      alert("Not enough network ETH for gas. Continuing without token discount.");
+    } else {
+      throw burnError;
+    }
+  }
+} else {
+  alert("Not enough tokens, paying full price.");
+}
       const orderId =
         window.crypto?.randomUUID?.() ||
         `${Date.now()}-${Math.random().toString(16).slice(2)}`;

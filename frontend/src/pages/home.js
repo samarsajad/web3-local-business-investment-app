@@ -486,19 +486,28 @@ function Home({ user, account }) {
         allowNetworkSwitch: true,
       });
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner(account);
-      const user = await signer.getAddress();
+      // ✅ AFTER
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner(account);
+const user = await signer.getAddress();
 
-      const bal = await reward.balanceOf(user);
-      const cost = ethers.parseUnits("5", 18);
+// Fetch fee data upfront to avoid ethers internally calling getGasPrice
+const feeData = await provider.getFeeData();
+const gasOverrides = {
+  gasLimit: 150000n,
+  maxFeePerGas: feeData.maxFeePerGas ?? feeData.gasPrice ?? ethers.parseUnits("20", "gwei"),
+  maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? ethers.parseUnits("1", "gwei"),
+};
 
-      let finalPrice = product.price;
+const bal = await reward.balanceOf(user);
+const cost = ethers.parseUnits("5", 18);
 
-      if (bal >= cost) {
-        try {
-          const burnTx = await reward.burnTokens(cost);
-          await burnTx.wait();
+let finalPrice = product.price;
+
+if (bal >= cost) {
+  try {
+    const burnTx = await reward.burnTokens(cost, gasOverrides); // ✅ explicit gas
+    await burnTx.wait();
 
           finalPrice = Math.floor(product.price * 0.9);
           alert("Discount applied using tokens!");
