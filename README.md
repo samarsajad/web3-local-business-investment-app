@@ -1,8 +1,37 @@
 #  Community-Powered Local Economy (Web3 DApp)
 
-A decentralized platform where users can invest in local businesses, earn rewards, and participate in a circular local economy using **React, Firebase, and Blockchain**.
+A decentralized platform where users can invest in local businesses using blockchain, earn crypto reward tokens on every purchase and let AI guide every decision, personalized to you.**.
 
 ---
+##  Overview
+
+Community Local Economy is a full-stack Web3 application built for the 
+Google Hackathon that bridges **artificial intelligence**, **blockchain 
+technology**, and **community-driven economics**.
+
+Users can discover local businesses, receive **AI-powered personalized 
+investment recommendations**, invest using cryptocurrency, and earn **reward 
+tokens (LRT)** on every purchase — creating a self-sustaining circular 
+local economy.
+
+---
+
+##  Key Features
+
+- **AI Investment Recommendations** — AI analyzes all listed 
+  businesses and recommends the best investment opportunity based on 
+  business data and market signals
+- **Personalized Suggestions** — AI learns from your investment history 
+  and delivers tailored next-step recommendations unique to each user
+- **Crypto Investing** — Invest in local businesses directly using 
+  Sepolia ETH via MetaMask
+- **Reward Token System** — Earn LRT (Local Reward Tokens) on every 
+  investment and redeem them for discounts when shopping
+- **NFT Purchase Receipts** — Every purchase is minted as an NFT on 
+  the blockchain, serving as a verifiable proof of purchase
+- **Google Authentication** — Secure login via Firebase Auth
+- **Investment Dashboard** — Track your portfolio, rewards, and 
+  personalized insights in real time
 
 #  Tech Stack
 
