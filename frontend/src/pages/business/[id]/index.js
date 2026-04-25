@@ -339,19 +339,7 @@ if (bal >= cost) {
   };
 
 
-  if (!selectedBusiness) {
-    return (
-      <div className="container dashboard-page">
-        <div className="empty-state">
-          <h3>Business not found</h3>
-          <p>The business page you opened does not exist.</p>
-          <Link to="/" className="business-card__open-link">
-            Back to businesses
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  
 
   return (
     <div className="container dashboard-page">
