@@ -167,10 +167,16 @@ function BusinessDetailsPage({ user, account }) {
       });
 
       const beforeBal = await rewardContract.balanceOf(account);
+      setPurchaseStatus("Submitting investment transaction. Confirm in MetaMask...");
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther("0.01"),
       });
+
+      const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
+      setPurchaseStatus(`Investment submitted. Waiting for confirmation... ${txUrl}`);
+
       await tx.wait();
+      setPurchaseStatus("Investment confirmed on-chain.");
 
       if (user?.uid) {
         const investedBusiness = businesses.find((biz) => biz.chainId === businessId);
@@ -210,6 +216,7 @@ function BusinessDetailsPage({ user, account }) {
       }
     } catch (err) {
       console.error(err);
+      setPurchaseStatus("");
       alert(err?.reason || err?.message || "Investment failed");
     }
   };
