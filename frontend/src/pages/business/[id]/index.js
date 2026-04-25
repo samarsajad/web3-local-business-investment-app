@@ -251,10 +251,20 @@ function BusinessDetailsPage({ user, account }) {
 
       let finalPrice = product.price;
       if (bal >= cost) {
-        const burnTx = await reward.burnTokens(cost);
-        await burnTx.wait();
-        finalPrice = Math.floor(product.price * 0.9);
-        alert("Discount applied using tokens!");
+        try {
+          const burnTx = await reward.burnTokens(cost);
+          await burnTx.wait();
+          finalPrice = Math.floor(product.price * 0.9);
+          alert("Discount applied using tokens!");
+        } catch (burnError) {
+          const burnMessage =
+            burnError?.reason || burnError?.shortMessage || burnError?.message || "";
+          if (/insufficient funds/i.test(String(burnMessage))) {
+            alert("Not enough network ETH for gas. Continuing without token discount.");
+          } else {
+            throw burnError;
+          }
+        }
       } else {
         alert("Not enough tokens, paying full price.");
       }
