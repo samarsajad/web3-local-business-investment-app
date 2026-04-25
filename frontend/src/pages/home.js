@@ -427,8 +427,7 @@ function Home({ user, account }) {
         value: ethers.parseEther(INVEST_AMOUNT_ETH),
       });
 
-      const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
-      setPurchaseToast(`Investment submitted. Waiting for confirmation... ${txUrl}`, "pending");
+      setPurchaseToast("Investment submitted. Waiting for confirmation...", "pending");
 
       await tx.wait();
       setPurchaseToast("Investment confirmed on-chain.", "success");
