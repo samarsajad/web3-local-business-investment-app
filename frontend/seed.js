@@ -280,7 +280,11 @@ async function seed() {
     "Bananas",
     60,
     groceryId,
-    "https://images.unsplash.com/photo-1574226516831-e1dff420e37f?auto=format&fit=crop&w=900&q=80"
+    "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=900&q=80"
+(string)
+
+
+
   );
 
   await upsertProduct(
