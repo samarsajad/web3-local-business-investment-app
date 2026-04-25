@@ -8,6 +8,8 @@ import { getContract } from "../../../utils/contract";
 import { getRewardContract } from "../../../utils/rewardContract";
 import BusinessCard from "../../../components/Business/BusinessCard";
 
+const INVEST_AMOUNT_ETH = process.env.REACT_APP_INVEST_AMOUNT_ETH || "0.001";
+
 function BusinessDetailsPage({ user, account }) {
   const { id } = useParams();
   const decodedId = decodeURIComponent(id || "");
@@ -169,7 +171,7 @@ function BusinessDetailsPage({ user, account }) {
       const beforeBal = await rewardContract.balanceOf(account);
       setPurchaseStatus("Submitting investment transaction. Confirm in MetaMask...");
       const tx = await contract.invest(businessId, {
-        value: ethers.parseEther("0.01"),
+        value: ethers.parseEther(INVEST_AMOUNT_ETH),
       });
 
       const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
@@ -187,7 +189,7 @@ function BusinessDetailsPage({ user, account }) {
           businessId,
           businessDocId: investedBusiness?.docId || null,
           businessName: investedBusiness?.name || "Unknown business",
-          amountEth: "0.01",
+          amountEth: INVEST_AMOUNT_ETH,
           txHash: tx.hash,
           createdAt: serverTimestamp(),
         });
@@ -198,7 +200,7 @@ function BusinessDetailsPage({ user, account }) {
           biz.chainId === businessId
             ? {
                 ...biz,
-                totalFundsEth: Number(biz.totalFundsEth || 0) + 0.01,
+                totalFundsEth: Number(biz.totalFundsEth || 0) + Number(INVEST_AMOUNT_ETH),
               }
             : biz
         )

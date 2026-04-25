@@ -19,6 +19,8 @@ import { getRewardContract } from "../utils/rewardContract";
 import AIRecommendationCard from "../components/AI/AICard";
 import InvestmentInsights from "../components/AI/InvestmentInsights";
 
+const INVEST_AMOUNT_ETH = process.env.REACT_APP_INVEST_AMOUNT_ETH || "0.001";
+
 
 function Home({ user, account }) {
   const minPersonalizedInvestments = 1;
@@ -405,7 +407,7 @@ function Home({ user, account }) {
 
       setPurchaseStatus("Submitting investment transaction. Confirm in MetaMask...");
       const tx = await contract.invest(businessId, {
-        value: ethers.parseEther("0.01"),
+        value: ethers.parseEther(INVEST_AMOUNT_ETH),
       });
 
       const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
@@ -422,7 +424,7 @@ function Home({ user, account }) {
           businessId,
           businessDocId: selectedBusiness?.docId || null,
           businessName: selectedBusiness?.name || "Unknown business",
-          amountEth: "0.01",
+          amountEth: INVEST_AMOUNT_ETH,
           txHash: tx.hash,
           createdAt: serverTimestamp(),
         });
@@ -435,7 +437,7 @@ function Home({ user, account }) {
           biz.chainId === businessId
             ? {
                 ...biz,
-                totalFundsEth: Number(biz.totalFundsEth || 0) + 0.01,
+                totalFundsEth: Number(biz.totalFundsEth || 0) + Number(INVEST_AMOUNT_ETH),
               }
             : biz
         )
