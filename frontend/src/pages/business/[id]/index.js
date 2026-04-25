@@ -339,7 +339,17 @@ if (bal >= cost) {
   };
 
 
-  
+  if (!selectedBusiness) {
+    return (
+      <div className="container dashboard-page">
+        
+        <Link to="/" className="business-card__open-link">
+          Back to businesses
+        </Link>
+        
+      </div>
+    );
+  }
 
   return (
     <div className="container dashboard-page">
