@@ -41,9 +41,9 @@ function Home({ user, account }) {
 
   const syncBusinessesToContract = useCallback(async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {
-      return bizData.map((biz, index) => ({
+      return bizData.map((biz) => ({
         ...biz,
-        chainId: index + 1,
+        chainId: null,
         totalFundsEth: Number(biz.totalFundsEth || 0),
       }));
     }
@@ -57,9 +57,9 @@ function Home({ user, account }) {
       const count = Number(await contract.businessCount());
 
       if (count === 0) {
-        return bizData.map((biz, index) => ({
+        return bizData.map((biz) => ({
           ...biz,
-          chainId: index + 1,
+          chainId: null,
           totalFundsEth: Number(biz.totalFundsEth || 0),
         }));
       }
@@ -88,7 +88,7 @@ function Home({ user, account }) {
 
         return {
           ...biz,
-          chainId: onChain?.id ?? index + 1,
+          chainId: onChain?.id ?? null,
           fundingGoal: firestoreGoalRs,
           fundingGoalRs: firestoreGoalRs,
           onChainFundingGoal: onChain?.fundingGoal ?? null,
@@ -97,9 +97,9 @@ function Home({ user, account }) {
       });
     } catch (err) {
       console.error("Contract sync error:", err);
-      return bizData.map((biz, index) => ({
+      return bizData.map((biz) => ({
         ...biz,
-        chainId: index + 1,
+        chainId: null,
         totalFundsEth: Number(biz.totalFundsEth || 0),
       }));
     }
@@ -364,6 +364,11 @@ function Home({ user, account }) {
       return;
     }
 
+    if (!Number.isInteger(businessId) || businessId <= 0) {
+      alert("This business is not created on-chain yet. Please create/sync it first.");
+      return;
+    }
+
     try {
       const contract = await getContract({
         requireSigner: true,
@@ -581,10 +586,10 @@ function Home({ user, account }) {
               <BusinessCard
                 business={biz}
                 products={products[biz.id] || products[biz.docId] || []}
-                onInvest={() => invest(biz.chainId || index + 1)}
+                onInvest={() => invest(biz.chainId)}
                 onBuy={handlePurchase}
                 isRecommended={isRecommended(biz.name)}
-                canInvest={Boolean(user && account)}
+                canInvest={Boolean(user && account && Number.isInteger(biz.chainId))}
                 showProducts={false}
               />
             </div>
