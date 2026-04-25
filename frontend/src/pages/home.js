@@ -19,7 +19,7 @@ import { getRewardContract } from "../utils/rewardContract";
 import AIRecommendationCard from "../components/AI/AICard";
 import InvestmentInsights from "../components/AI/InvestmentInsights";
 
-const INVEST_AMOUNT_ETH = process.env.REACT_APP_INVEST_AMOUNT_ETH || "0.001";
+const INVEST_AMOUNT_ETH = process.env.REACT_APP_INVEST_AMOUNT_ETH || "0.0001";
 
 
 function Home({ user, account }) {

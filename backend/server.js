@@ -25,6 +25,21 @@ const wallet = new ethers.Wallet(mintSignerPrivateKey, provider);
 const nftContract = new ethers.Contract(nftContractAddress, PurchaseNFT.abi, wallet);
 const usedOrders = new Set();
 
+// Log wallet info on startup
+(async () => {
+  try {
+    const walletAddress = wallet.address;
+    const balance = await provider.getBalance(walletAddress);
+    const balanceInEth = ethers.formatEther(balance);
+    console.log(`✓ Mint signer wallet: ${walletAddress}`);
+    console.log(`✓ Wallet balance: ${balanceInEth} ETH (${balance.toString()} wei)`);
+    console.log(`✓ NFT Contract: ${nftContractAddress}`);
+    console.log(`✓ RPC URL: ${rpcUrl}`);
+  } catch (err) {
+    console.error("✗ Failed to check wallet info:", err.message);
+  }
+})();
+
 const aiRoutes = require("./routes/ai");
 
 app.use(cors());
@@ -73,8 +88,30 @@ app.post("/mint-nft", async (req, res) => {
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
+    // Debug: Check wallet balance before mint
+    const walletBalance = await provider.getBalance(wallet.address);
+    const walletBalanceEth = ethers.formatEther(walletBalance);
+    console.log(`[MINT] Wallet balance before mint: ${walletBalanceEth} ETH (${walletBalance.toString()} wei)`);
+
+    // Try to estimate gas first
+    let gasEstimate;
+    try {
+      gasEstimate = await nftContract.mintNFT.estimateGas(userAddress);
+      const gasPrice = await provider.getGasPrice();
+      const estimatedCost = gasEstimate * gasPrice;
+      const estimatedCostEth = ethers.formatEther(estimatedCost);
+      console.log(`[MINT] Gas estimate: ${gasEstimate.toString()}, Gas price: ${ethers.formatEther(gasPrice)} gwei, Est. cost: ${estimatedCostEth} ETH`);
+    } catch (estErr) {
+      console.error(`[MINT] Gas estimation failed:`, estErr.message);
+      throw estErr;
+    }
+
+    console.log(`[MINT] Minting NFT for user: ${userAddress}`);
     const mintTx = await nftContract.mintNFT(userAddress);
+    console.log(`[MINT] Transaction submitted: ${mintTx.hash}`);
+    
     const receipt = await mintTx.wait();
+    console.log(`[MINT] Transaction confirmed: ${receipt.hash}`);
 
     usedOrders.add(orderId);
 
