@@ -1,6 +1,6 @@
 #  Community-Powered Local Economy (Web3 DApp)
 
-A decentralized platform where users can invest in local businesses, earn rewards, and participate in a circular local economy using **React, Firebase, and Blockchain (Hardhat + MetaMask)**.
+A decentralized platform where users can invest in local businesses, earn rewards, and participate in a circular local economy using **React, Firebase, and Blockchain**.
 
 ---
 
@@ -19,14 +19,15 @@ A decentralized platform where users can invest in local businesses, earn reward
 ```
 project-root/
 │
-├── frontend/        # React app
-├── blockchain/      # Smart contracts (Hardhat)
+├── backend/        
+├── blockchain/      
+├── frontend/ 
 └── README.md
 ```
 
 ---
 
-# 1. FRONTEND SETUP (React + Firebase)
+# 1. FRONTEND SETUP 
 
 ##  Install dependencies
 
@@ -57,7 +58,7 @@ npm start
 ---
 
 
-# 2. BLOCKCHAIN SETUP (Hardhat)
+# 2. BLOCKCHAIN SETUP 
 
 ##  Initialize project
 
