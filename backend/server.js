@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { ethers } = require("ethers");
-const PurchaseNFT = require("./abis/PurchaseNFT.json");
+const PurchaseNFT = require("../blockchain/artifacts/contracts/PurchaseNFT.sol/PurchaseNFT.json");
 
 dotenv.config();
 
@@ -31,10 +31,25 @@ const usedOrders = new Set();
     const walletAddress = wallet.address;
     const balance = await provider.getBalance(walletAddress);
     const balanceInEth = ethers.formatEther(balance);
+    const owner = await nftContract.owner();
+    const isMinter = await nftContract.minters(walletAddress);
     console.log(`✓ Mint signer wallet: ${walletAddress}`);
     console.log(`✓ Wallet balance: ${balanceInEth} ETH (${balance.toString()} wei)`);
     console.log(`✓ NFT Contract: ${nftContractAddress}`);
     console.log(`✓ RPC URL: ${rpcUrl}`);
+    console.log(`✓ NFT owner: ${owner}`);
+    console.log(`✓ Wallet is minter: ${isMinter}`);
+
+    if (!isMinter) {
+      if (owner.toLowerCase() !== walletAddress.toLowerCase()) {
+        console.warn("⚠ Wallet is not a minter and does not own the contract; minting will fail until an owner grants access.");
+      } else {
+        const grantTx = await nftContract.addMinter(walletAddress);
+        console.log(`✓ Granting minter role: ${grantTx.hash}`);
+        await grantTx.wait();
+        console.log("✓ Mint signer wallet added as minter");
+      }
+    }
   } catch (err) {
     console.error("✗ Failed to check wallet info:", err.message);
   }
