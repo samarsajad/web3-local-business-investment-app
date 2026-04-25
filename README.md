@@ -194,5 +194,8 @@ MINT_SIGNER_PRIVATE_KEY=YOUR_BACKEND_MINT_WALLET_PRIVATE_KEY
 GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
 ```
 
+# LIVE DEMO
+- https://web3-local-business-investment-app.vercel.app
+
 
 
