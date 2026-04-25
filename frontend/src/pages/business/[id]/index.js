@@ -17,6 +17,23 @@ function BusinessDetailsPage({ user, account }) {
   const [businesses, setBusinesses] = useState([]);
   const [productsByBusiness, setProductsByBusiness] = useState({});
   const [purchaseStatus, setPurchaseStatus] = useState("");
+  const [purchaseStatusTone, setPurchaseStatusTone] = useState("pending");
+
+  const setPurchaseToast = (message, tone = "pending") => {
+    setPurchaseStatus(message);
+    setPurchaseStatusTone(tone);
+  };
+
+  const clearPurchaseToast = () => {
+    setPurchaseStatus("");
+    setPurchaseStatusTone("pending");
+  };
+
+  const getPurchaseToastIcon = () => {
+    if (purchaseStatusTone === "success") return "✓";
+    if (purchaseStatusTone === "error") return "!";
+    return "...";
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -169,16 +186,16 @@ function BusinessDetailsPage({ user, account }) {
       });
 
       const beforeBal = await rewardContract.balanceOf(account);
-      setPurchaseStatus("Submitting investment transaction. Confirm in MetaMask...");
+      setPurchaseToast("Submitting investment transaction. Confirm in MetaMask...", "pending");
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther(INVEST_AMOUNT_ETH),
       });
 
       const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
-      setPurchaseStatus(`Investment submitted. Waiting for confirmation... ${txUrl}`);
+      setPurchaseToast(`Investment submitted. Waiting for confirmation... ${txUrl}`, "pending");
 
       await tx.wait();
-      setPurchaseStatus("Investment confirmed on-chain.");
+      setPurchaseToast("Investment confirmed on-chain.", "success");
 
       if (user?.uid) {
         const investedBusiness = businesses.find((biz) => biz.chainId === businessId);
@@ -208,7 +225,7 @@ function BusinessDetailsPage({ user, account }) {
 
       const afterBal = await rewardContract.balanceOf(account);
       const rewardDelta = afterBal - beforeBal;
-      setPurchaseStatus("");
+      clearPurchaseToast();
 
       if (rewardDelta > 0n) {
         alert(
@@ -219,7 +236,7 @@ function BusinessDetailsPage({ user, account }) {
       }
     } catch (err) {
       console.error(err);
-      setPurchaseStatus("");
+      clearPurchaseToast();
       alert(err?.reason || err?.message || "Investment failed");
     }
   };
@@ -236,7 +253,7 @@ function BusinessDetailsPage({ user, account }) {
     }
 
     try {
-      setPurchaseStatus(`Preparing purchase for ${product.name}...`);
+      setPurchaseToast(`Preparing purchase for ${product.name}...`, "pending");
       const reward = await getRewardContract({
         requireSigner: true,
         requestAccounts: false,
@@ -312,12 +329,12 @@ if (bal >= cost) {
         throw new Error(payload?.error || "Backend NFT mint failed");
       }
 
-      setPurchaseStatus(`Purchased ${product.name} for Rs.${finalPrice}. NFT minted.`);
-      setPurchaseStatus("");
+      setPurchaseToast(`Purchased ${product.name} for Rs.${finalPrice}. NFT minted.`, "success");
+      clearPurchaseToast();
       alert("Purchase successful and NFT minted!");
     } catch (err) {
       console.error(err);
-      setPurchaseStatus("");
+      clearPurchaseToast();
       alert(err?.reason || err?.message || "Purchase failed");
     }
   };
@@ -355,7 +372,12 @@ if (bal >= cost) {
         </Link>
       </div>
 
-      {purchaseStatus ? <div className="purchase-toast">{purchaseStatus}</div> : null}
+      {purchaseStatus ? (
+        <div className={`purchase-toast purchase-toast--${purchaseStatusTone}`}>
+          <span className="purchase-toast__icon">{getPurchaseToastIcon()}</span>
+          <span>{purchaseStatus}</span>
+        </div>
+      ) : null}
 
       <BusinessCard
         business={selectedBusiness}

@@ -29,6 +29,7 @@ function Home({ user, account }) {
   const [balance, setBalance] = useState("0");
   const [loading, setLoading] = useState(true);
   const [purchaseStatus, setPurchaseStatus] = useState("");
+  const [purchaseStatusTone, setPurchaseStatusTone] = useState("pending");
 
   const [aiRecommendation, setAiRecommendation] = useState("");
   const [recommendedBusinessName, setRecommendedBusinessName] = useState("");
@@ -40,6 +41,22 @@ function Home({ user, account }) {
   const [nextError, setNextError] = useState("");
 
   const [userInvestments, setUserInvestments] = useState([]);
+
+  const setPurchaseToast = (message, tone = "pending") => {
+    setPurchaseStatus(message);
+    setPurchaseStatusTone(tone);
+  };
+
+  const clearPurchaseToast = () => {
+    setPurchaseStatus("");
+    setPurchaseStatusTone("pending");
+  };
+
+  const getPurchaseToastIcon = () => {
+    if (purchaseStatusTone === "success") return "✓";
+    if (purchaseStatusTone === "error") return "!";
+    return "...";
+  };
 
   const syncBusinessesToContract = useCallback(async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {
@@ -405,16 +422,16 @@ function Home({ user, account }) {
 
       const beforeBal = await rewardContract.balanceOf(account);
 
-      setPurchaseStatus("Submitting investment transaction. Confirm in MetaMask...");
+      setPurchaseToast("Submitting investment transaction. Confirm in MetaMask...", "pending");
       const tx = await contract.invest(businessId, {
         value: ethers.parseEther(INVEST_AMOUNT_ETH),
       });
 
       const txUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
-      setPurchaseStatus(`Investment submitted. Waiting for confirmation... ${txUrl}`);
+      setPurchaseToast(`Investment submitted. Waiting for confirmation... ${txUrl}`, "pending");
 
       await tx.wait();
-      setPurchaseStatus("Investment confirmed on-chain.");
+      setPurchaseToast("Investment confirmed on-chain.", "success");
 
       const selectedBusiness = businesses.find((biz) => biz.chainId === businessId);
       if (user?.uid) {
@@ -447,7 +464,7 @@ function Home({ user, account }) {
       const rewardDelta = afterBal - beforeBal;
 
       setBalance(ethers.formatUnits(afterBal, 18));
-      setPurchaseStatus("");
+      clearPurchaseToast();
 
       if (rewardDelta > 0n) {
         alert(
@@ -463,7 +480,7 @@ function Home({ user, account }) {
       }
     } catch (err) {
       console.error(err);
-      setPurchaseStatus("");
+      clearPurchaseToast();
       alert(err?.reason || err?.message || "Investment failed");
     }
   };
@@ -480,7 +497,7 @@ function Home({ user, account }) {
     }
 
     try {
-      setPurchaseStatus(`Preparing purchase for ${product.name}...`);
+      setPurchaseToast(`Preparing purchase for ${product.name}...`, "pending");
       const reward = await getRewardContract({
         requireSigner: true,
         requestAccounts: false,
@@ -525,7 +542,7 @@ if (bal >= cost) {
         alert("Not enough tokens, paying full price.");
       }
 
-      setPurchaseStatus(`Bought ${product.name} for Rs.${finalPrice}. Minting NFT...`);
+      setPurchaseToast(`Bought ${product.name} for Rs.${finalPrice}. Minting NFT...`, "pending");
 
       const orderId =
         window.crypto?.randomUUID?.() ||
@@ -540,7 +557,7 @@ if (bal >= cost) {
       ].join("\n");
 
       const signature = await signer.signMessage(mintMessage);
-      setPurchaseStatus("NFT mint submitted to backend. Waiting for confirmation...");
+      setPurchaseToast("NFT mint submitted to backend. Waiting for confirmation...", "pending");
 
       const backendUrl =
         process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
@@ -566,14 +583,14 @@ if (bal >= cost) {
         throw new Error(payload?.error || "Backend NFT mint failed");
       }
 
-      setPurchaseStatus(`NFT minted successfully for ${product.name}.`);
-      setPurchaseStatus("");
+      setPurchaseToast(`NFT minted successfully for ${product.name}.`, "success");
+      clearPurchaseToast();
       alert("NFT minted successfully!");
 
       await loadBalance();
     } catch (err) {
       console.error(err);
-      setPurchaseStatus("");
+      clearPurchaseToast();
       alert(err?.reason || err?.message || "Purchase failed");
     }
   };
@@ -604,7 +621,12 @@ if (bal >= cost) {
         />
       </div>
 
-      {purchaseStatus ? <div className="purchase-toast">{purchaseStatus}</div> : null}
+      {purchaseStatus ? (
+        <div className={`purchase-toast purchase-toast--${purchaseStatusTone}`}>
+          <span className="purchase-toast__icon">{getPurchaseToastIcon()}</span>
+          <span>{purchaseStatus}</span>
+        </div>
+      ) : null}
 
       <div className="section-heading reveal-on-scroll reveal-lift reveal-delay-2" id="businesses">
         <div>

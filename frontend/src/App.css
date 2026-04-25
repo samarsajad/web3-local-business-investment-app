@@ -390,6 +390,9 @@
   bottom: 16px;
   z-index: 1200;
   max-width: min(420px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid rgba(16, 52, 77, 0.2);
@@ -400,6 +403,52 @@
   box-shadow: 0 14px 28px rgba(6, 22, 38, 0.2);
   animation: toast-in 220ms ease-out;
   backdrop-filter: blur(4px);
+}
+
+.purchase-toast__icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.purchase-toast--pending {
+  border-color: rgba(18, 121, 100, 0.35);
+  background: linear-gradient(145deg, rgba(239, 253, 249, 0.98), rgba(230, 249, 242, 0.96));
+  color: #0e4e41;
+}
+
+.purchase-toast--pending .purchase-toast__icon {
+  background: rgba(18, 121, 100, 0.16);
+  color: #0e6b58;
+}
+
+.purchase-toast--success {
+  border-color: rgba(14, 128, 73, 0.35);
+  background: linear-gradient(145deg, rgba(235, 255, 240, 0.98), rgba(223, 249, 231, 0.96));
+  color: #14592f;
+}
+
+.purchase-toast--success .purchase-toast__icon {
+  background: rgba(14, 128, 73, 0.16);
+  color: #0f7a43;
+}
+
+.purchase-toast--error {
+  border-color: rgba(194, 55, 55, 0.35);
+  background: linear-gradient(145deg, rgba(255, 243, 243, 0.98), rgba(255, 233, 233, 0.96));
+  color: #742525;
+}
+
+.purchase-toast--error .purchase-toast__icon {
+  background: rgba(194, 55, 55, 0.16);
+  color: #ab2f2f;
 }
 
 @keyframes toast-in {
