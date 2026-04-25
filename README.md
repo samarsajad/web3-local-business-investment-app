@@ -11,26 +11,26 @@ technology**, and **community-driven economics**.
 
 Users can discover local businesses, receive **AI-powered personalized 
 investment recommendations**, invest using cryptocurrency, and earn **reward 
-tokens (LRT)** on every purchase — creating a self-sustaining circular 
+tokens (LRT)** on every purchase, creating a self-sustaining circular 
 local economy.
 
 ---
 
 ##  Key Features
 
-- **AI Investment Recommendations** — AI analyzes all listed 
+- **AI Investment Recommendations**: AI analyzes all listed 
   businesses and recommends the best investment opportunity based on 
   business data and market signals
-- **Personalized Suggestions** — AI learns from your investment history 
+- **Personalized Suggestions**: AI learns from your investment history 
   and delivers tailored next-step recommendations unique to each user
-- **Crypto Investing** — Invest in local businesses directly using 
+- **Crypto Investing**: Invest in local businesses directly using 
   Sepolia ETH via MetaMask
-- **Reward Token System** — Earn LRT (Local Reward Tokens) on every 
+- **Reward Token System**: Earn LRT (Local Reward Tokens) on every 
   investment and redeem them for discounts when shopping
-- **NFT Purchase Receipts** — Every purchase is minted as an NFT on 
+- **NFT Purchase Receipts**: Every purchase is minted as an NFT on 
   the blockchain, serving as a verifiable proof of purchase
-- **Google Authentication** — Secure login via Firebase Auth
-- **Investment Dashboard** — Track your portfolio, rewards, and 
+- **Google Authentication**: Secure login via Firebase Auth
+- **Investment Dashboard**: Track your portfolio, rewards, and 
   personalized insights in real time
 
 #  Tech Stack
