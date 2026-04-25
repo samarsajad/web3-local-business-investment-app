@@ -4,7 +4,7 @@ const CONTRACT_ADDRESS =
   process.env.REACT_APP_CONTRACT_ADDRESS ||
   "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-const EXPECTED_CHAIN_ID = BigInt(process.env.REACT_APP_CHAIN_ID || "31337");
+const EXPECTED_CHAIN_ID = Number(process.env.REACT_APP_CHAIN_ID || 31337);
 const EXPECTED_CHAIN_HEX = process.env.REACT_APP_CHAIN_HEX || "0x7a69";
 const EXPECTED_CHAIN_LABEL = process.env.REACT_APP_CHAIN_LABEL || "configured network";
 
@@ -153,7 +153,7 @@ export const getContract = async (options = {}) => {
 
   const network = await provider.getNetwork();
 
-  if (network.chainId !== EXPECTED_CHAIN_ID) {
+  if (Number(network.chainId) !== EXPECTED_CHAIN_ID) {
     if (!allowNetworkSwitch) {
       throw new Error(`Switch MetaMask to ${EXPECTED_CHAIN_LABEL}`);
     }
