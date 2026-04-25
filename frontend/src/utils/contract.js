@@ -183,23 +183,7 @@ export const getContract = async (options = {}) => {
     runner = signer;
   }
 
-  const code = await provider.getCode(CONTRACT_ADDRESS);
-  if (!code || code === "0x") {
-    throw new Error(
-      `No contract found at ${CONTRACT_ADDRESS}. Redeploy Investment and set REACT_APP_CONTRACT_ADDRESS.`
-    );
-  }
-
   const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, runner);
-
-  // Probe a known function so wrong-address issues fail fast with a clear message.
-  try {
-    await contract.businessCount();
-  } catch (error) {
-    throw new Error(
-      `Address ${CONTRACT_ADDRESS} is not the Investment contract. After restarting Hardhat, redeploy Investment and update REACT_APP_CONTRACT_ADDRESS.`
-    );
-  }
 
   return contract;
 };

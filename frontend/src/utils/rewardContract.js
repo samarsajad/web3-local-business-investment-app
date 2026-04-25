@@ -42,23 +42,8 @@ export const getRewardContract = async (options = {}) => {
     }
   }
 
-  const code = await provider.getCode(CONTRACT_ADDRESS);
-  if (!code || code === "0x") {
-    throw new Error(
-      `No contract found at ${CONTRACT_ADDRESS}. Redeploy RewardToken and set REACT_APP_REWARD_CONTRACT_ADDRESS.`
-    );
-  }
-
   const runner = requireSigner ? await provider.getSigner() : provider;
   const contract = new ethers.Contract(CONTRACT_ADDRESS, RewardToken.abi, runner);
-
-  try {
-    await contract.name();
-  } catch (error) {
-    throw new Error(
-      `Address ${CONTRACT_ADDRESS} is not the RewardToken contract. Redeploy RewardToken and update REACT_APP_REWARD_CONTRACT_ADDRESS.`
-    );
-  }
 
   return contract;
 };
