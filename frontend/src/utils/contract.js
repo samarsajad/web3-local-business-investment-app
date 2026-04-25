@@ -4,9 +4,9 @@ const CONTRACT_ADDRESS =
   process.env.REACT_APP_CONTRACT_ADDRESS ||
   "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-const EXPECTED_CHAIN_ID = 31337n;
-
-const LOCAL_CHAIN_HEX = "0x7a69";
+const EXPECTED_CHAIN_ID = BigInt(process.env.REACT_APP_CHAIN_ID || "31337");
+const EXPECTED_CHAIN_HEX = process.env.REACT_APP_CHAIN_HEX || "0x7a69";
+const EXPECTED_CHAIN_LABEL = process.env.REACT_APP_CHAIN_LABEL || "configured network";
 
 const ABI = [{
       "inputs": [],
@@ -155,17 +155,17 @@ export const getContract = async (options = {}) => {
 
   if (network.chainId !== EXPECTED_CHAIN_ID) {
     if (!allowNetworkSwitch) {
-      throw new Error("Switch MetaMask to Hardhat Local (31337)");
+      throw new Error(`Switch MetaMask to ${EXPECTED_CHAIN_LABEL}`);
     }
 
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: LOCAL_CHAIN_HEX }],
+        params: [{ chainId: EXPECTED_CHAIN_HEX }],
       });
       provider = new ethers.BrowserProvider(window.ethereum);
     } catch (error) {
-      throw new Error("Switch MetaMask to Hardhat Local (31337)");
+      throw new Error(`Switch MetaMask to ${EXPECTED_CHAIN_LABEL}`);
     }
   }
 
