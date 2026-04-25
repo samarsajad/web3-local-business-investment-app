@@ -447,6 +447,7 @@ function Home({ user, account }) {
       const rewardDelta = afterBal - beforeBal;
 
       setBalance(ethers.formatUnits(afterBal, 18));
+      setPurchaseStatus("");
 
       if (rewardDelta > 0n) {
         alert(
@@ -566,6 +567,7 @@ if (bal >= cost) {
       }
 
       setPurchaseStatus(`NFT minted successfully for ${product.name}.`);
+      setPurchaseStatus("");
       alert("NFT minted successfully!");
 
       await loadBalance();
@@ -602,9 +604,7 @@ if (bal >= cost) {
         />
       </div>
 
-      {purchaseStatus ? (
-        <div className="status-banner reveal-on-scroll reveal-lift reveal-delay-1">{purchaseStatus}</div>
-      ) : null}
+      {purchaseStatus ? <div className="purchase-toast">{purchaseStatus}</div> : null}
 
       <div className="section-heading reveal-on-scroll reveal-lift reveal-delay-2" id="businesses">
         <div>

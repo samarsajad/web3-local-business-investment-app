@@ -384,6 +384,44 @@
   font-weight: 600;
 }
 
+.purchase-toast {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 1200;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 52, 77, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink-950);
+  font-weight: 600;
+  line-height: 1.45;
+  box-shadow: 0 14px 28px rgba(6, 22, 38, 0.2);
+  animation: toast-in 220ms ease-out;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .purchase-toast {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+  }
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;

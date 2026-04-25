@@ -208,6 +208,7 @@ function BusinessDetailsPage({ user, account }) {
 
       const afterBal = await rewardContract.balanceOf(account);
       const rewardDelta = afterBal - beforeBal;
+      setPurchaseStatus("");
 
       if (rewardDelta > 0n) {
         alert(
@@ -312,6 +313,7 @@ if (bal >= cost) {
       }
 
       setPurchaseStatus(`Purchased ${product.name} for Rs.${finalPrice}. NFT minted.`);
+      setPurchaseStatus("");
       alert("Purchase successful and NFT minted!");
     } catch (err) {
       console.error(err);
@@ -353,7 +355,7 @@ if (bal >= cost) {
         </Link>
       </div>
 
-      {purchaseStatus ? <div className="status-banner">{purchaseStatus}</div> : null}
+      {purchaseStatus ? <div className="purchase-toast">{purchaseStatus}</div> : null}
 
       <BusinessCard
         business={selectedBusiness}
