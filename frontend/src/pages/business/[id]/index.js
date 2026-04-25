@@ -51,6 +51,12 @@ function BusinessDetailsPage({ user, account }) {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (account) {
+      fetchData();
+    }
+  }, [account, fetchData]);
+
   const syncBusinessesToContract = async (bizData) => {
     if (!window.ethereum || bizData.length === 0) {
       return bizData.map((biz) => ({
@@ -138,35 +144,20 @@ function BusinessDetailsPage({ user, account }) {
 
       let businessId = business?.chainId;
       if (!Number.isInteger(businessId) || businessId <= 0) {
-        const goal = Number(business?.fundingGoalRs ?? business?.fundingGoal ?? 1000);
-        const createTx = await contract.createBusiness(
-          business?.name || "Local Business",
-          goal
-        );
-        const receipt = await createTx.wait();
-
-        let createdBusinessId = null;
-        for (const log of receipt.logs || []) {
-          try {
-            const parsed = contract.interface.parseLog(log);
-            if (parsed?.name === "BusinessCreated") {
-              createdBusinessId = Number(parsed.args.businessId);
-              break;
-            }
-          } catch (_) {
-            // Ignore logs that are not from Investment.
+        const normalizedName = (business?.name || "").trim().toLowerCase();
+        const count = Number(await contract.businessCount());
+        for (let i = 1; i <= count; i += 1) {
+          const onChainBusiness = await contract.businesses(i);
+          if ((onChainBusiness.name || "").trim().toLowerCase() === normalizedName) {
+            businessId = i;
+            break;
           }
         }
+      }
 
-        businessId = createdBusinessId || Number(await contract.businessCount());
-
-        setBusinesses((prev) =>
-          prev.map((biz) =>
-            String(biz.docId || biz.id) === String(business?.docId || business?.id)
-              ? { ...biz, chainId: businessId }
-              : biz
-          )
-        );
+      if (!Number.isInteger(businessId) || businessId <= 0) {
+        alert("This business is not yet registered on-chain. Please sync/create it in the Investment contract first.");
+        return;
       }
 
       const rewardContract = await getRewardContract({
