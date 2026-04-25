@@ -38,6 +38,16 @@ npm install firebase axios ethers @react-google-maps/api
 
 ---
 
+## Create frontend environment file
+
+```bash
+REACT_APP_CONTRACT_ADDRESS=YOUR_DEPLOYED_CONTRACT_ADDRESS
+REACT_APP_REWARD_CONTRACT_ADDRESS=YOUR_DEPLOYED_REWARD_CONTRACT_ADDRESS
+REACT_APP_NFT_ADDRESS=YOUR_DEPLOYED_NFT_CONTRACT_ADDRESS
+REACT_APP_BACKEND_URL=YOUR_BACKEND_URL
+REACT_APP_RPC_URL=YOUR_RPC_URL
+```
+
 ##  Run frontend
 
 ```bash
@@ -87,6 +97,21 @@ npx hardhat node
 ```bash
 npx hardhat run scripts/deploy.js --network localhost
 ```
+##  Deploy Reward Token
+
+
+
+```bash
+npx hardhat run scripts/deployReward.js --network localhost
+```
+
+##  Deploy NFT
+
+
+
+```bash
+npx hardhat run scripts/deployNFT.js --network localhost
+```
 
 
 ##  Create business
@@ -121,5 +146,23 @@ Private Key: 0x...
  Import into MetaMask
 
 ---
+
+#  4. BACKEND SETUP
+
+##  Run backend
+
+```bash
+node server.js
+```
+
+##   Create backend environment file
+
+```bash
+RPC_URL=YOUR_RPC_URL
+NFT_CONTRACT_ADDRESS=YOUR_DEPLOYED_NFT_CONTRACT_ADDRESS
+MINT_SIGNER_PRIVATE_KEY=YOUR_BACKEND_MINT_WALLET_PRIVATE_KEY
+GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
+```
+
 
 
