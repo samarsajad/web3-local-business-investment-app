@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { ethers } = require("ethers");
-const PurchaseNFT = require("../blockchain/artifacts/contracts/PurchaseNFT.sol/PurchaseNFT.json");
+const PurchaseNFT = require("./abis/PurchaseNFT.json");
 
 dotenv.config();
 
