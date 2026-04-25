@@ -112,10 +112,11 @@ app.post("/mint-nft", async (req, res) => {
     let gasEstimate;
     try {
       gasEstimate = await nftContract.mintNFT.estimateGas(userAddress);
-      const gasPrice = await provider.getGasPrice();
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
       const estimatedCost = gasEstimate * gasPrice;
       const estimatedCostEth = ethers.formatEther(estimatedCost);
-      console.log(`[MINT] Gas estimate: ${gasEstimate.toString()}, Gas price: ${ethers.formatEther(gasPrice)} gwei, Est. cost: ${estimatedCostEth} ETH`);
+      console.log(`[MINT] Gas estimate: ${gasEstimate.toString()}, Gas price: ${ethers.formatUnits(gasPrice, "gwei")} gwei, Est. cost: ${estimatedCostEth} ETH`);
     } catch (estErr) {
       console.error(`[MINT] Gas estimation failed:`, estErr.message);
       throw estErr;
