@@ -15,7 +15,7 @@ tokens (LRT)** on every purchase, creating a self-sustaining circular
 local economy.
 
 ## Live Demo
-- https://web3-local-business-investment-app.vercel.app
+ https://web3-local-business-investment-app.vercel.app
 
 ---
 
