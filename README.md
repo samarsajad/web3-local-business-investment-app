@@ -1,6 +1,6 @@
 #  Community-Powered Local Economy (Web3 DApp)
 
-A decentralized platform where users can invest in local businesses using blockchain, earn crypto reward tokens on every purchase and let AI guide every decision, personalized to you.**.
+A decentralized platform where users can invest in local businesses using blockchain, earn crypto reward tokens on every purchase and let AI guide every decision, personalized to you.
 
 ---
 ##  Overview
