@@ -14,9 +14,9 @@ const firebaseConfig = {
 function loadEnvFiles() {
   const env = {};
   const envPaths = [
-    path.resolve(__dirname, ".env.local"),
-    path.resolve(__dirname, ".env.production"),
     path.resolve(__dirname, "..", "blockchain", ".env"),
+    path.resolve(__dirname, ".env.production"),
+    path.resolve(__dirname, ".env.local"),
   ];
 
   for (const envPath of envPaths) {
@@ -51,7 +51,7 @@ async function syncBusinessesOnChain(businessesForSync) {
   const { ethers } = await import("ethers");
 
   const fileEnv = loadEnvFiles();
-  const rpcUrl = process.env.RPC_URL || fileEnv.RPC_URL;
+  const rpcUrl = process.env.RPC_URL || fileEnv.RPC_URL || fileEnv.RPC_URl;
   const privateKey = process.env.PRIVATE_KEY || fileEnv.PRIVATE_KEY;
   const contractAddress =
     process.env.REACT_APP_CONTRACT_ADDRESS ||
