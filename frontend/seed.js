@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 const firebaseConfig = {
   apiKey: "AIzaSyAH4xit6_noco0Jynve-oC2JW1ysqVhPd4",
   authDomain: "blockchain-local-economy-app.firebaseapp.com",
@@ -7,6 +10,94 @@ const firebaseConfig = {
   appId: "1:396522366570:web:7e131a9acdb7b5e5cf8c13",
   measurementId: "G-R9VD2LQK1C",
 };
+
+function loadEnvFiles() {
+  const env = {};
+  const envPaths = [
+    path.resolve(__dirname, ".env.local"),
+    path.resolve(__dirname, ".env.production"),
+    path.resolve(__dirname, "..", "blockchain", ".env"),
+  ];
+
+  for (const envPath of envPaths) {
+    if (!fs.existsSync(envPath)) {
+      continue;
+    }
+
+    const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        continue;
+      }
+
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex <= 0) {
+        continue;
+      }
+
+      const key = trimmed.slice(0, eqIndex).trim();
+      const value = trimmed.slice(eqIndex + 1).trim().replace(/^"|"$/g, "");
+      if (!(key in env)) {
+        env[key] = value;
+      }
+    }
+  }
+
+  return env;
+}
+
+async function syncBusinessesOnChain(businessesForSync) {
+  const { ethers } = await import("ethers");
+
+  const fileEnv = loadEnvFiles();
+  const rpcUrl = process.env.RPC_URL || fileEnv.RPC_URL;
+  const privateKey = process.env.PRIVATE_KEY || fileEnv.PRIVATE_KEY;
+  const contractAddress =
+    process.env.REACT_APP_CONTRACT_ADDRESS ||
+    fileEnv.REACT_APP_CONTRACT_ADDRESS;
+
+  if (!rpcUrl || !privateKey || !contractAddress) {
+    console.warn(
+      "Skipping on-chain sync. Missing RPC_URL, PRIVATE_KEY, or REACT_APP_CONTRACT_ADDRESS."
+    );
+    return;
+  }
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const wallet = new ethers.Wallet(privateKey, provider);
+  const investmentAbi = [
+    "function businessCount() view returns (uint256)",
+    "function businesses(uint256) view returns (string name, uint256 fundingGoal, uint256 totalFunds)",
+    "function createBusiness(string _name, uint256 _goal)",
+  ];
+  const contract = new ethers.Contract(contractAddress, investmentAbi, wallet);
+
+  const count = Number(await contract.businessCount());
+  const onChainNames = new Set();
+  for (let i = 1; i <= count; i += 1) {
+    const business = await contract.businesses(i);
+    onChainNames.add((business.name || "").trim().toLowerCase());
+  }
+
+  let created = 0;
+  for (const biz of businessesForSync) {
+    const normalizedName = (biz.name || "").trim().toLowerCase();
+    if (!normalizedName || onChainNames.has(normalizedName)) {
+      continue;
+    }
+
+    const tx = await contract.createBusiness(
+      biz.name,
+      Number(biz.fundingGoal || 1000)
+    );
+    await tx.wait();
+    onChainNames.add(normalizedName);
+    created += 1;
+  }
+
+  console.log(`On-chain business sync complete. Added ${created} new businesses.`);
+}
 
 async function seed() {
   const { initializeApp } = await import("firebase/app");
@@ -23,6 +114,7 @@ async function seed() {
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const businessesForSync = [];
 
   const upsertBusiness = async (
     name,
@@ -101,6 +193,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80",
     "food"
   );
+  businessesForSync.push({ name: "Local Bakery", fundingGoal: 100000 });
 
   const cafeId = await upsertBusiness(
     "Local Cafe",
@@ -110,6 +203,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
     "food"
   );
+  businessesForSync.push({ name: "Local Cafe", fundingGoal: 120000 });
 
   // NEW BUSINESSES
   const groceryId = await upsertBusiness(
@@ -120,6 +214,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80",
     "retail"
   );
+  businessesForSync.push({ name: "Green Grocery", fundingGoal: 150000 });
 
   const bookstoreId = await upsertBusiness(
     "City Bookstore",
@@ -129,6 +224,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=1200&q=80",
     "education"
   );
+  businessesForSync.push({ name: "City Bookstore", fundingGoal: 80000 });
 
  
 
@@ -140,6 +236,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80",
     "retail"
   );
+  businessesForSync.push({ name: "Trendy Clothes", fundingGoal: 1800 });
 
   const restaurantId = await upsertBusiness(
     "Family Restaurant",
@@ -149,6 +246,7 @@ async function seed() {
     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
     "food"
   );
+  businessesForSync.push({ name: "Family Restaurant", fundingGoal: 250000 });
 
   
 
@@ -223,6 +321,8 @@ async function seed() {
     restaurantId,
     "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80"
   );
+
+  await syncBusinessesOnChain(businessesForSync);
 
   console.log("Seed complete");
 } catch (error) {

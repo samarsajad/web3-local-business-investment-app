@@ -391,7 +391,7 @@ function Home({ user, account }) {
       }
 
       if (!Number.isInteger(businessId) || businessId <= 0) {
-        alert("This business is not yet registered on-chain. Please sync/create it in the Investment contract first.");
+        alert("Investment is temporarily unavailable for this business. Please try another business for now.");
         return;
       }
 
