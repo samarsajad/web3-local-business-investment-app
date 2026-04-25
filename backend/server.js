@@ -109,18 +109,15 @@ app.post("/mint-nft", async (req, res) => {
     console.log(`[MINT] Wallet balance before mint: ${walletBalanceEth} ETH (${walletBalance.toString()} wei)`);
 
     // Try to estimate gas first
-    let gasEstimate;
-    try {
-      gasEstimate = await nftContract.mintNFT.estimateGas(userAddress);
-      const feeData = await provider.getFeeData();
-      const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
-      const estimatedCost = gasEstimate * gasPrice;
-      const estimatedCostEth = ethers.formatEther(estimatedCost);
-      console.log(`[MINT] Gas estimate: ${gasEstimate.toString()}, Gas price: ${ethers.formatUnits(gasPrice, "gwei")} gwei, Est. cost: ${estimatedCostEth} ETH`);
-    } catch (estErr) {
-      console.error(`[MINT] Gas estimation failed:`, estErr.message);
-      throw estErr;
-    }
+  let gasEstimate;
+try {
+  gasEstimate = await nftContract.mintNFT.estimateGas(userAddress);
+} catch (estErr) {
+  console.error(`[MINT] Gas estimation failed:`, estErr); // log full error, not just message
+  return res.status(500).json({
+    error: `Gas estimation failed: ${estErr?.reason || estErr?.message}`,
+  });
+}
 
     console.log(`[MINT] Minting NFT for user: ${userAddress}`);
     const mintTx = await nftContract.mintNFT(userAddress);
@@ -138,11 +135,11 @@ app.post("/mint-nft", async (req, res) => {
       orderId,
     });
   } catch (error) {
-    console.error("Mint API error:", error);
-    return res.status(500).json({
-      error: error?.reason || error?.shortMessage || error?.message || "NFT mint failed",
-    });
-  }
+  console.error("Mint API error FULL:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+  return res.status(500).json({
+    error: error?.reason || error?.shortMessage || error?.message || "NFT mint failed",
+  });
+}
 });
 
 app.listen(port, () => {
