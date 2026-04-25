@@ -14,6 +14,9 @@ investment recommendations**, invest using cryptocurrency, and earn **reward
 tokens (LRT)** on every purchase, creating a self-sustaining circular 
 local economy.
 
+## Live Demo
+- https://web3-local-business-investment-app.vercel.app
+
 ---
 
 ##  Key Features
@@ -193,9 +196,3 @@ NFT_CONTRACT_ADDRESS=YOUR_DEPLOYED_NFT_CONTRACT_ADDRESS
 MINT_SIGNER_PRIVATE_KEY=YOUR_BACKEND_MINT_WALLET_PRIVATE_KEY
 GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
 ```
-
-# LIVE DEMO
-- https://web3-local-business-investment-app.vercel.app
-
-
-
